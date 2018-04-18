@@ -22,23 +22,30 @@ from copy import deepcopy
 #     view.center()
 #     return view
 
+global forcefield
+global pH
 
-class macromolecule:
+class macromolecule():
 
-    self.pdb_file    = None
-    self.modeller    = None
-    self.topology    = None
-    self.positions   = None
-    self.n_atoms     = None
-    self.__addHs_log = None
+    def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=False):
 
-    def __init__(self, pdb_file=None, addHs=True):
+
+        self.pdb_file    = None
+        self.forcefield  = None
+        self.pH          = None
+        self.modeller    = None
+        self.topology    = None
+        self.positions   = None
+        self.n_atoms     = None
+        self.__addHs_log = None
 
         if pdb_file:
             pdb_aux  = app.PDBFile(pdb_file)
             self.modeller = app.Modeller(pdb_aux.topology, pdb_aux.positions)
+            self.forcefield = app.ForceField(forcefield)
+            self.pH         = pH
             if addHs:
-                self.__addHs_log = modeller.addHydrogens(forcefield, pH=pH)
+                self.__addHs_log = self.modeller.addHydrogens(self.forcefield, pH=self.pH)
             self.topology  = self.modeller.getTopology()
             self.positions = self.modeller.getPositions()
             self.n_atoms   = len(self.positions)
@@ -73,12 +80,12 @@ class complex(macromolecule):
 
 class MMcontext:
 
-    self.complex=None
-    self.integrator=None
-    self.system=None
-    self.context=None
-
     def __init__(self, complex=None):
+
+        self.complex=None
+        self.integrator=None
+        self.system=None
+        self.context=None
 
         self.complex    = complex
         self.integrator = openmm.VerletIntegrator(1.0 * unit.femtoseconds)
@@ -109,3 +116,4 @@ class MMcontext:
 
     def rotate_ligand(rotation=None):
         pass
+
