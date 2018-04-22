@@ -1,4 +1,4 @@
-REMARK   1 CREATED WITH OPENMM 7.2.1, 2018-04-21
+REMARK   1 CREATED WITH OPENMM 7.2.1, 2018-04-22
 CRYST1  207.250   43.860   80.673  90.00  90.00  90.00 P 1           1 
 ATOM      1  N   ALA A   1      -4.722  16.032  -5.051  1.00  0.00           N  
 ATOM      2  CA  ALA A   1      -5.460  16.827  -4.074  1.00  0.00           C  
