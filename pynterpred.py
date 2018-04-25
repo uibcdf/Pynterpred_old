@@ -22,9 +22,6 @@ from copy import deepcopy
 #     view.center()
 #     return view
 
-global forcefield
-global pH
-
 class macromolecule():
 
     def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=False):
