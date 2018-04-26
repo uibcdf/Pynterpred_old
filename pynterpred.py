@@ -2,6 +2,8 @@ from simtk import openmm, unit
 from simtk.openmm import app
 import numpy as np
 
+import utils
+
 from copy import deepcopy
 # from tqdm import tqdm
 
@@ -59,7 +61,7 @@ class ligand(macromolecule):
 
     pass
 
-class complex(macromolecule):
+class molcomplex(macromolecule):
 
     def __init__(self, receptor=None, ligand=None, offset=None):
 
@@ -114,3 +116,16 @@ class MMcontext:
     def rotate_ligand(rotation=None):
         pass
 
+def docking(receptor,ligand):
+
+    #value_non_interacting = docker.non_interacting(receptor,ligand)
+
+    rmax_receptor = utils.dist_furthest_atom_surface(receptor)
+    rmax_ligand   = utils.dist_furthest_atom_surface(ligand)
+    rmax_complex  = rmax_receptor+rmax_ligand+0.4
+
+    centers     = docker.centers_in_region(region='layer', distribution='regular_cartesian', rmax=rmax_complex) #'regular_polar'
+    #quaternions = docker.uniform_quaternions(size=None,random_state)
+
+    #return lista_energias, lista_poses
+    return centers

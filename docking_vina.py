@@ -71,24 +71,14 @@ def vina (receptor, ligand, center=None, extent=None, numposes=20, babelexe='oba
     # babel -m -i pdbqt ligand_out.pdbqt -o pdb out_.pdb -xhn
 
 
-    # receptor_pdb = tempname(suffix=".pdb")
-    # ligand_pdb = tempname(suffix=".pdb")
-    # output_pdb = tempname(suffix="_.pdb")
-    # output_prefix = path.splitext(output_pdb)[0]
-
-    # receptor_pdbqt = tempname(suffix=".pdbqt")
-    # ligand_pdbqt = tempname(suffix=".pdbqt")
-    # output_pdbqt = tempname(suffix=".pdbqt")
-
-    receptor_pdb  = "receptor.pdb"
-    ligand_pdb    = "ligand.pdb"
-    output_pdb    = "output_.pdb"
+    receptor_pdb = tempname(suffix=".pdb")
+    ligand_pdb = tempname(suffix=".pdb")
+    output_pdb = tempname(suffix="_.pdb")
     output_prefix = path.splitext(output_pdb)[0]
 
-    receptor_pdbqt= "receptor.pdbqt"
-    ligand_pdbqt  = "ligand.pdbqt"
-    output_pdbqt  = "output.pdbqt"
-
+    receptor_pdbqt = tempname(suffix=".pdbqt")
+    ligand_pdbqt = tempname(suffix=".pdbqt")
+    output_pdbqt = tempname(suffix=".pdbqt")
 
     print('receptor pdb:',receptor_pdb)
     receptor_pdb_file = open(receptor_pdb, 'w')
@@ -132,23 +122,33 @@ def vina (receptor, ligand, center=None, extent=None, numposes=20, babelexe='oba
         raise NameError('Could not find babel, or no execute permissions are given')
 
 
-    call([babelexe, '-i', 'pdb', receptor_pdb, '-o', 'pdbqt', '-O', receptor_pdbqt, '-xr'])
+    print(center,extent)
+    center=center*10.0
+    extent=extent*10.0
+
+    babel_receptor=babelexe+" -i pdb "+receptor_pdb+" -o pdbqt -O "+receptor_pdbqt+' -xr'
+    babel_ligand  =babelexe+" -i pdb "+ligand_pdb+" -o pdbqt -O "+ligand_pdbqt+' -xnh'
+    vina_command  =vinaexe+' --receptor '+receptor_pdbqt+' --ligand '+ligand_pdbqt+' --out '+output_pdbqt+ ' --center_x '+str(center[0])+' --center_y '+str(center[1])+' --center_z '+str(center[2])+ ' --size_x '+str(extent[0])+' --size_y '+str(extent[1])+' --size_z '+str(extent[2])+' --num_modes '+str(numposes)
+
+    print(babel_receptor)
+    print(babel_ligand)
+    print(vina_command)
+
+    call(babel_receptor,shell=True)
 
     with_charges=True
     if with_charges:
         #logger.info('Charges detected in ligand and will be used for docking.')
         print('Charges detected in ligand and will be used for docking.')
-        call([babelexe, '-i', 'pdb', ligand_pdb, '-o', 'pdbqt', '-O', ligand_pdbqt, '-xr'])
+        call(babel_ligand,shell=True)
     else:
         #logger.info('Charges were not defined for all atoms. Will guess charges anew using gasteiger method.')
-        call([babelexe, '-i', 'pdb', ligand_pdb, '-o', 'pdbqt', '-O', ligand_pdbqt, '-xr', '--partialcharge', 'gasteiger'])
+        call(babel_ligand+' --partialcharge gasteiger',shell=True)
 
-    call([vinaexe, '--receptor', receptor_pdbqt, '--ligand', ligand_pdbqt, '--out', output_pdbqt,
-          '--center_x', str(center[0]), '--center_y', str(center[1]), '--center_z', str(center[2]),
-          '--size_x', str(extent[0]), '--size_y', str(extent[1]), '--size_z', str(extent[2]), '--num_modes', str(numposes)])
+    call(vina_command,shell=True)
 
-    call([babelexe, '-m', '-i', 'pdbqt', output_pdbqt, '-o', 'pdb', '-O', output_pdb, '-xhn'])
-
+    call([babelexe, '-m', '-i', 'pdbqt', output_pdbqt, '-o', 'pdb', '-O', output_pdb, '-xhn'],shell=True)
+    pass
 
     from natsort import natsorted
     outfiles = natsorted(glob('{}*.pdb'.format(output_prefix)))
