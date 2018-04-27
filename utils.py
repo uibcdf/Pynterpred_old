@@ -1,32 +1,49 @@
 import numpy as np
+import mdtraj as md
+import nglview
 
+def make_view(macromolecule):
 
-def dist_furthest_atom_surface(macromolecule): #sería mejor sacarlo con una grid de superficie como pymol o lo que sea
+    topology_mdtraj   = md.Topology.from_openmm(macromolecule.topology)
+    positions_mdtraj  = macromolecule.positions._value
+    aux_traj=md.Trajectory(positions_mdtraj, topology_mdtraj)
+
+    return nglview.show_mdtraj(aux_traj)
+
+def sasa_atoms(macromolecule,probe_radius=0.227,n_sphere_points=5000):
+    #0.227 rdw NA
+    topology_mdtraj   = md.Topology.from_openmm(macromolecule.topology)
+    positions_mdtraj  = macromolecule.positions._value
+    aux_traj=md.Trajectory(positions_mdtraj, topology_mdtraj)
+    sasa = md.shrake_rupley(aux_traj,probe_radius=probe_radius, n_sphere_points=n_sphere_points, mode='atom')
+
+    return sasa
+
+def furthest_accessible_atom_to_center(macromolecule,probe_radius=0.227,n_sphere_points=5000,sasa_threshold=0.01):
+
+    sasa = sasa_atoms(macromolecule,probe_radius=probe_radius, n_sphere_points=n_sphere_points)
+    list_atoms_exposed=np.nonzero(sasa>=0.01)[1]
 
     positions   = np.array(macromolecule.positions._value)
     geom_center = positions.mean(0)
-    vect_dists  = positions - geom_center
+    vect_dists  = positions[list_atoms_exposed] - geom_center
     dists       = np.linalg.norm(vect_dists,axis=1)
-    max_dist    = dists.max()
 
-    return max_dist
+    arg_exposed    = dists.argmax()
 
-# Estrategia de movimiento outside-in para descartar
+    return list_atoms_exposed[arg_exposed], dists[arg_exposed]
 
-def centers_in_region(region="sphere",distribution="regular_cartesian", rmax=None, num_centers=None):
-    '''region: sphere, cube
-    distribution=regular_cartesian, regular_polar, uniform
-    '''
+def closest_accessible_atom_to_center(macromolecule,probe_radius=0.227,n_sphere_points=5000,sasa_threshold=0.01):
 
-    if region=="sphere":
-        if distribution=="regular_cartesian":
+    sasa = sasa_atoms(macromolecule,probe_radius=probe_radius, n_sphere_points=n_sphere_points)
+    list_atoms_exposed=np.nonzero(sasa>=0.01)[1]
 
-            volume_explored = (4.0/3.0)*np.pi*(rmax**3)
-            delta_x    = np.cbrt(volume_explored/num_centers)
-            nx         = 2*rmax/delta_x
-            x          = np.linspace(-rmax,rmax,delta_x)
-            xv, yv, zv = np.meshgrid(x,x,x, indexing='ij')
-            for ii in range(nx):
-                for jj in range(nx):
-                    for kk in range(nx):
+    positions   = np.array(macromolecule.positions._value)
+    geom_center = positions.mean(0)
+    vect_dists  = positions[list_atoms_exposed] - geom_center
+    dists       = np.linalg.norm(vect_dists,axis=1)
+
+    arg_exposed    = dists.argmin()
+
+    return list_atoms_exposed[arg_exposed], dists[arg_exposed]
 

@@ -24,9 +24,9 @@ from copy import deepcopy
 #     view.center()
 #     return view
 
-class macromolecule():
+class Macromolecule():
 
-    def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=False):
+    def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=True):
 
 
         self.pdb_file    = None
@@ -49,19 +49,25 @@ class macromolecule():
             self.positions = self.modeller.getPositions()
             self.n_atoms   = len(self.positions)
 
+            if center:
+                geometrical_center=np.array(self.positions._value).mean(axis=0)
+                positions_centered= self.positions - geometrical_center*unit.nanometers
+                self.modeller.positions=positions_centered
+                self.positions=self.modeller.getPositions()
+
         pass
 
 
-class receptor(macromolecule):
+class Receptor(Macromolecule):
 
     pass
 
 
-class ligand(macromolecule):
+class Ligand(Macromolecule):
 
     pass
 
-class molcomplex(macromolecule):
+class MolComplex(Macromolecule):
 
     def __init__(self, receptor=None, ligand=None, offset=None):
 
