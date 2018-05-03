@@ -57,6 +57,12 @@ class Macromolecule():
 
         pass
 
+    def setPositions(self,positions):
+
+        self.modeller.positions  = positions
+        self.positions          = self.modeller.getPositions()
+
+        pass
 
 class Receptor(Macromolecule):
 
@@ -69,58 +75,104 @@ class Ligand(Macromolecule):
 
 class MolComplex(Macromolecule):
 
-    def __init__(self, receptor=None, ligand=None, offset=None):
-
+    def __init__(self, receptor=None, ligand=None):
         self.modeller   = app.Modeller(receptor.topology, receptor.positions)
         self.modeller.add(ligand.topology, ligand.positions)
         self.topology   = self.modeller.getTopology()
-        self.positions  = self.modeller.getPositions()
-
         self.receptor   = receptor
         self.ligand     = ligand
 
-    def make_MMcontext():
+    def getMMContext(self):
+        return MMContext(self.receptor, self.ligand)
 
-        return MMcontext(self.complex)
+class MMContext:
 
-class MMcontext:
+    def __init__(self, receptor,ligand):
 
-    def __init__(self, complex=None):
+        self.receptor   = deepcopy(receptor)
+        self.ligand     = deepcopy(ligand)
+        self.molcomplex = MolComplex(receptor,ligand)
 
-        self.complex=None
-        self.integrator=None
-        self.system=None
-        self.context=None
+        self._begins_receptor = 0
+        self._begins_ligand   = self.receptor.n_atoms
 
-        self.complex    = complex
-        self.integrator = openmm.VerletIntegrator(1.0 * unit.femtoseconds)
-        self.system     = forcefield.createSystem(self.complex.topology, nonbondedMethod=app.NoCutoff,
-                                                     constraints=app.HBonds, implicitSolvent=app.OBC2)
-        self.context    = openmm.Context(self.system, self.integrator)
+        self.system     = None
+        self.modeller   = None
+        self.context    = None
 
-    def eval_potential_energy():
+        self.modeller   = self.molcomplex.modeller
+        self.forcefield = receptor.forcefield
+        self.system     = self.forcefield.createSystem(self.molcomplex.topology, nonbondedMethod=app.NoCutoff) # constraints=app.HBonds, implicit=)
+        self.context    = openmm.Context(self.system, openmm.VerletIntegrator(1.0 * unit.femtoseconds))
+        self.context.setPositions(np.vstack([self.receptor.positions,self.ligand.positions]))
+        pass
+
+    def get_ligand(self,conformation='context'): #'context'
+
+        tmp_macromolecule = deepcopy(self.ligand)
+
+        if conformation == 'original':
+            pass
+        elif conformation == 'context':
+            tmp_macromolecule.setPositions(self.context.getPositions()[self._begins_ligand:])
+
+        return tmp_macromolecule
+
+    def get_receptor(self,conformation='context'):
+
+        tmp_macromolecule = deepcopy(self.receptor)
+
+        if conformation == 'original':
+            pass
+        elif conformation == 'context':
+            tmp_macromolecule.setPositions(self.context.getPositions()[0:self._begins_ligand])
+
+        return tmp_macromolecule
+
+    def get_molcomplex(self,conformation='context'):
+
+        tmp_macromolecule = deepcopy(self.molcomplex)
+
+        if conformation == 'original':
+            pass
+        elif conformation == 'context':
+            tmp_macromolecule.setPositions(self.context.getState(getPositions=True).getPositions())
+
+        return tmp_macromolecule
+
+    def get_potential_energy(self):
         return self.context.getState(getEnergy=True).getPotentialEnergy()
 
-    def set_ligand_positions(positions=None):
-
-        new_positions=deepcopy(self.complex.positions)
-        for ind_atom in range(self.complex.ligand.n_atoms):
-            new_positions[self.complex.receptor.n_atoms+ind_atom]=positions[ind_atom]
-
-        self.context.setPositions(new_positions)
+    def get_potential_energy_coupling(self):
         pass
 
-    def translate_ligand(translation=None):
 
-        new_positions=deepcopy(self.complex.positions)
-        for ind_atom in range(self.complex.ligand.n_atoms):
-            new_positions[self.complex.receptor.n_atoms+ind_atom]=new_positions[self.complex.receptor.n_atoms+ind_atom]+translation
+    def center_ligand(self,center=None,conformation='original'):
 
-        self.context.setPositions(new_positions)
+        if conformation == 'original':
+            self.context.setPositions(np.vstack([self.receptor.positions,self.ligand.positions+center]))
+        elif conformation =='context':
+            pass
+
         pass
 
-    def rotate_ligand(rotation=None):
+    def rotate_ligand(self,qrotor=None):
+
+
+        self.context.setPositions(np.vstack([self.receptor.positions,self.ligand.positions]))
         pass
+
+    def translate_ligand(self,translation=None):
+
+        aux_positions=self.context.getState(getPositions=True).getPositions()
+        aux_positions[self._begins_ligand:]=aux_positions[self._begins_ligand:]+translation
+        self.context.setPositions(aux_positions)
+
+        pass
+
+    def make_view(self):
+        return utils.make_view(self.get_molcomplex())
+
 
 def docking(receptor,ligand):
 

@@ -64,9 +64,9 @@ class Region():
 
         if distribution=="regular_cartesian":
 
-            ind_atom_max_rec, d_max_rec=utils.furthest_accessible_atom_to_center(receptor)
-            ind_atom_max_lig, d_max_lig=utils.furthest_accessible_atom_to_center(ligand)
-            ind_atom_min_lig, d_min_lig=utils.closest_accessible_atom_to_center(ligand)
+            _, d_max_rec=utils.furthest_accessible_atom_to_center(receptor)
+            _, d_max_lig=utils.furthest_accessible_atom_to_center(ligand)
+            _, d_min_lig=utils.closest_accessible_atom_to_center(ligand)
 
             Lbox = 2*d_max_rec+2*d_max_lig+hbond_dist #añado hbond distance
             nx_2       = np.int(np.ceil((Lbox/2.0)/delta_x))
