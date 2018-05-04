@@ -89,8 +89,8 @@ class MMContext:
 
     def __init__(self, receptor,ligand):
 
-        self.receptor   = deepcopy(receptor)
-        self.ligand     = deepcopy(ligand)
+        self.receptor   = receptor
+        self.ligand     = ligand
         self.molcomplex = MolComplex(receptor,ligand)
 
         self._begins_receptor = 0
@@ -131,7 +131,7 @@ class MMContext:
 
     def get_molcomplex(self,conformation='context'):
 
-        tmp_macromolecule = deepcopy(self.molcomplex)
+        tmp_macromolecule = MolComplex(self.receptor,self.ligand)
 
         if conformation == 'original':
             pass
@@ -139,6 +139,15 @@ class MMContext:
             tmp_macromolecule.setPositions(self.context.getState(getPositions=True).getPositions())
 
         return tmp_macromolecule
+
+    def get_positions(self,conformation='context'):
+
+        if conformation == 'original':
+            pass
+        elif conformation == 'context':
+            tmp_positions=self.context.getState(getPositions=True).getPositions()
+
+        return tmp_positions
 
     def get_potential_energy(self):
         return self.context.getState(getEnergy=True).getPotentialEnergy()
@@ -171,7 +180,7 @@ class MMContext:
         pass
 
     def make_view(self):
-        return utils.make_view(self.get_molcomplex())
+        return utils.make_view(self.get_molcomplex(conformation="context"))
 
 
 def docking(receptor,ligand):
