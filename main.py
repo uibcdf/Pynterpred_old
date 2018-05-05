@@ -1,7 +1,7 @@
 from simtk import openmm, unit
 from simtk.openmm import app
 import numpy as np
-
+import quaternion
 import utils
 
 from copy import deepcopy
@@ -24,11 +24,18 @@ from copy import deepcopy
 #     view.center()
 #     return view
 
+class _Units():
+
+    def __init__(self):
+
+        self.length=unit.nanometers
+        self.time  =unit.picoseconds
+
 class Macromolecule():
 
     def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=True):
 
-
+        self._units      = _Units()
         self.pdb_file    = None
         self.forcefield  = None
         self.pH          = None
@@ -49,20 +56,15 @@ class Macromolecule():
             self.positions = self.modeller.getPositions()
             self.n_atoms   = len(self.positions)
 
+            self._positions_centered=utils.center_positions_in_cartesian_origin(self.positions)
             if center:
-                geometrical_center=np.array(self.positions._value).mean(axis=0)
-                positions_centered= self.positions - geometrical_center*unit.nanometers
-                self.modeller.positions=positions_centered
-                self.positions=self.modeller.getPositions()
+                self.set_positions(self._positions_centered)
 
-        pass
+    def set_positions(self,positions):
 
-    def setPositions(self,positions):
-
-        self.modeller.positions  = positions
+        self.modeller.positions  = deepcopy(positions)
         self.positions          = self.modeller.getPositions()
 
-        pass
 
 class Receptor(Macromolecule):
 
@@ -82,12 +84,14 @@ class MolComplex(Macromolecule):
         self.receptor   = receptor
         self.ligand     = ligand
 
-    def getMMContext(self):
+    def get_MMContext(self):
         return MMContext(self.receptor, self.ligand)
 
 class MMContext:
 
     def __init__(self, receptor,ligand):
+
+        self._units     = _Units()
 
         self.receptor   = receptor
         self.ligand     = ligand
@@ -136,18 +140,79 @@ class MMContext:
         if conformation == 'original':
             pass
         elif conformation == 'context':
-            tmp_macromolecule.setPositions(self.context.getState(getPositions=True).getPositions())
+            tmp_macromolecule.set_positions(self.context.getState(getPositions=True).getPositions())
 
         return tmp_macromolecule
 
-    def get_positions(self,conformation='context'):
+    def get_positions(self,molcomplex=False,receptor=False,ligand=False,conformation='context',centered=False):
 
         if conformation == 'original':
-            pass
-        elif conformation == 'context':
-            tmp_positions=self.context.getState(getPositions=True).getPositions()
 
-        return tmp_positions
+            if molcomplex:
+                if centered:
+                    print('not yet')
+                else:
+                    print('not yet')
+
+            if receptor:
+                if centered:
+                    tmp_positions_receptor = self.receptor._positions_centered
+                else:
+                    tmp_positions_receptor = self.receptor.positions
+
+            if ligand:
+                if centered:
+                    tmp_positions_ligand = self.ligand._positions_centered
+                else:
+                    tmp_positions_ligand = self.ligand._positions_centered
+
+        elif conformation == 'context':
+
+            tmp_positions_molcomplex=self.context.getState(getPositions=True).getPositions()
+
+            if molcomplex:
+                if centered:
+                    tmp_positions_molcomplex=utils.center_positions_in_cartesian_origin(tmp_positions_molcomplex)
+
+            if receptor:
+                tmp_positions_receptor  =tmp_positions_molcomplex[:self._begins_ligand]
+                if centered:
+                    tmp_positions_receptor = utils.center_positions_in_cartesian_origin(tmp_positions_receptor)
+
+            if ligand:
+                tmp_positions_ligand    =tmp_positions_molcomplex[self._begins_ligand:]
+                if centered:
+                    tmp_positions_ligand = utils.center_positions_in_cartesian_origin(tmp_positions_ligand)
+
+        tmp_out=[]
+        if molcomplex:
+            tmp_out.append(tmp_positions_molcomplex)
+        if receptor:
+            tmp_out.append(tmp_positions_receptor)
+        if ligand:
+            tmp_out.append(tmp_positions_ligand)
+
+        if len(tmp_out)==1:
+            return tmp_out[0]
+        elif len(tmp_out):
+            return tmp_out
+
+    def set_positions(self,molcomplex=None,receptor=None,ligand=None,conformation='context'):
+
+        if conformation=='context':
+            if (receptor is not None) or (ligand is not None):
+                tmp_positions=self.get_positions(molcomplex=True,receptor=False,ligand=False)
+                if receptor is not None:
+                    tmp_positions[:self._begins_ligand]=receptor
+                if ligand is not None:
+                    pass
+                    tmp_positions[self._begins_ligand:]=ligand
+                self.context.setPositions(tmp_positions)
+            elif molcomplex is not None:
+                self.context.setPositions(molcomplex)
+        elif conformation=='original':
+            print('Not yet')
+
 
     def get_potential_energy(self):
         return self.context.getState(getEnergy=True).getPotentialEnergy()
@@ -158,34 +223,44 @@ class MMContext:
 
     def center_ligand(self,center=None,conformation='original'):
 
+        tmp_positions = self.get_positions(ligand=True,conformation=conformation,centered=True)
+        tmp_positions += center
+        self.set_positions(ligand=tmp_positions)
+
+    def rotate_ligand(self,qrotor=None,conformation='original'):
+
+        tmp_ligand_positions = self.get_positions(ligand=True,conformation=conformation,centered=True)
+
         if conformation == 'original':
-            self.context.setPositions(np.vstack([self.receptor.positions,self.ligand.positions+center]))
+            tmp_ligand_positions=quaternion.rotate_vectors(qrotor,tmp_ligand_positions)*self._units.length
         elif conformation =='context':
-            pass
+            print("not working yet")
 
-        pass
-
-    def rotate_ligand(self,qrotor=None):
-
-
-        self.context.setPositions(np.vstack([self.receptor.positions,self.ligand.positions]))
-        pass
+        self.set_positions(ligand=tmp_ligand_positions)
 
     def translate_ligand(self,translation=None):
 
-        aux_positions=self.context.getState(getPositions=True).getPositions()
-        aux_positions[self._begins_ligand:]=aux_positions[self._begins_ligand:]+translation
-        self.context.setPositions(aux_positions)
+        aux_positions=self.get_positions(ligand=True)
+        aux_positions+=translation
+        self.set_positions(ligand=aux_positions)
 
         pass
 
-    def make_view(self):
-        return utils.make_view(self.get_molcomplex(conformation="context"))
+    def make_conformation(self,center=None,qrotor=None):
+        tmp_positions_ligand=quaternion.rotate_vectors(qrotor,self.ligand._positions_centered)+center._value
+        self.context.setPositions(np.vstack([self.receptor._positions_centered,tmp_positions_ligand]))
 
+    def make_view(self,positions=None):
 
-def docking(receptor,ligand):
+        return utils.make_view(self.get_molcomplex(conformation="context"),positions)
 
-    #value_non_interacting = docker.non_interacting(receptor,ligand)
+def docking(mmcontext=None,centers=None,qrotors=None):
+
+    num_centers = len(centers)
+    num_qrotors = len(qrotors)
+    num_evaluations = num_centers*num_qrotors
+
+    energies = np.zeros((num_evaluations),dtype=float)
 
     rmax_receptor = utils.dist_furthest_atom_surface(receptor)
     rmax_ligand   = utils.dist_furthest_atom_surface(ligand)
