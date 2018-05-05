@@ -17,6 +17,7 @@ dependencies:
   - alabaster=0.7.10=py36_1
   - alembic=0.9.9=py_0
   - asn1crypto=0.24.0=py36_0
+  - astropy=3.0.2=py36_1
   - attrs=18.1.0=py_0
   - babel=2.5.3=py36_0
   - backcall=0.1.0=py_0
@@ -63,6 +64,7 @@ dependencies:
   - h5py=2.7.1=py36_2
   - hdf4=4.2.13=0
   - hdf5=1.10.1=2
+  - healpy=1.11.0=py36_1
   - html5lib=1.0.1=py_0
   - icu=58.2=0
   - idna=2.6=py36_1
@@ -99,6 +101,7 @@ dependencies:
   - lzo=2.10=0
   - mako=1.0.7=py36_0
   - markupsafe=1.0=py36_0
+  - matplotlib=2.2.2=py36_1
   - mdtraj=1.9.1=py36_1
   - mistune=0.8.3=py36_1
   - mmtf-python=1.1.0=py_0
@@ -107,6 +110,8 @@ dependencies:
   - mpc=1.1.0=4
   - mpfr=3.1.5=0
   - mpi=1.0=mpich
+  - mpi4py=3.0.0=py36_0
+  - mpich=3.2.1=0
   - mpmath=1.0.0=py_0
   - msgpack-python=0.5.6=py36_0
   - msmtools=1.2.1=py36_1
@@ -146,6 +151,7 @@ dependencies:
   - ppft=1.6.4.7.1=py36_0
   - progress_reporter=1.4.1=py_0
   - prompt_toolkit=1.0.15=py36_0
+  - psutil=5.4.5=py36_0
   - ptyprocess=0.5.2=py36_0
   - py=1.5.3=py_0
   - pybtex=0.21=py36_0
@@ -155,11 +161,14 @@ dependencies:
   - pymbar=3.0.3=py36_1
   - pyopenssl=17.5.0=py36_1
   - pyparsing=2.2.0=py36_0
+  - pyqt=5.6.0=py36_5
   - pysocks=1.6.8=py36_1
   - pytables=3.4.3=py36_8
   - pytest=3.5.1=py36_0
   - pytest-arraydiff=0.2=py_0
+  - pytest-astropy=0.2.1=py_0
   - pytest-doctestplus=0.1.2=py_0
+  - pytest-openfiles=0.2.0=py_0
   - pytest-remotedata=0.2.0=py_0
   - pytest-runner=4.2=py_0
   - python=3.6.5=1
@@ -179,7 +188,7 @@ dependencies:
   - send2trash=1.5.0=py_0
   - setuptools=39.1.0=py36_0
   - simplegeneric=0.8.1=py36_0
-  - sip=4.19.8=py36_0
+  - sip=4.18=py36_1
   - six=1.11.0=py36_1
   - snowballstemmer=1.2.1=py36_0
   - sphinx=1.7.4=py36_0
