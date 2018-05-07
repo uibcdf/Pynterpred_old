@@ -253,21 +253,3 @@ class MMContext:
     def make_view(self,positions=None):
 
         return utils.make_view(self.get_molcomplex(conformation="context"),positions)
-
-def docking(mmcontext=None,centers=None,qrotors=None):
-
-    num_centers = len(centers)
-    num_qrotors = len(qrotors)
-    num_evaluations = num_centers*num_qrotors
-
-    energies = np.zeros((num_evaluations),dtype=float)
-
-    rmax_receptor = utils.dist_furthest_atom_surface(receptor)
-    rmax_ligand   = utils.dist_furthest_atom_surface(ligand)
-    rmax_complex  = rmax_receptor+rmax_ligand+0.4
-
-    centers     = docker.centers_in_region(region='layer', distribution='regular_cartesian', rmax=rmax_complex) #'regular_polar'
-    #quaternions = docker.uniform_quaternions(size=None,random_state)
-
-    #return lista_energias, lista_poses
-    return centers
