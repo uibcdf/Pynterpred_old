@@ -2,7 +2,7 @@ from simtk import openmm, unit
 from simtk.openmm import app
 import numpy as np
 import quaternion
-import utils
+from . import utils as utils
 
 from copy import deepcopy
 # from tqdm import tqdm

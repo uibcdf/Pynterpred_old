@@ -1,10 +1,5 @@
-from simtk import openmm, unit
-from simtk.openmm import app
 import numpy as np
-import quaternion
-import utils
-from pathos.multiprocessing import ProcessPool
-import time
+from mpi4py import MPI
 
 from copy import deepcopy
 
@@ -30,25 +25,17 @@ def _run_single_docker(docker):
     return tmp_energies
 
 
-def docking (mmcontext=None, region=None, num_dockers=1):
+def docking (mmcontext=None, region=None, num_dockers=1, platform='CPUs'):
 
-    tmp_docker=Docker()
-    tmp_docker=mmcontext
-    tmp_docker.region=region
+    if num_dockers==1:
+        pass
 
-    tmp_result=None
+    else:
 
-    if num_dockers>1:
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
 
-        subregions=region.split_in_subregions(num_dockers)
-        dockers   =[Docker(mmcontext,subregion) for subregion in subregions]
+        print(rank,size)
 
-        pool = ProcessPool(nodes=num_dockers)
-        results = pool.amap(_run_single_docker,dockers)
-        while not results.ready():
-            time.sleep(5); print(".", end=' ')
-        print(results.get())
-
-        # tmp_result=result.get(timeout=1)
-
-    return tmp_result
+    pass
