@@ -1,8 +1,8 @@
 name: pynterpred
 channels:
+  - anaconda
   - conda-forge
   - omnia
-  - anaconda
   - defaults
 dependencies:
   - intel-openmp=2018.0.0=8
@@ -28,14 +28,15 @@ dependencies:
   - blas=1.1=openblas
   - bleach=2.1.3=py_0
   - blosc=1.14.0=1
-  - boto3=1.7.12=py_0
-  - botocore=1.10.12=py_0
+  - boto3=1.7.19=py_0
+  - botocore=1.10.19=py_0
   - bzip2=1.0.6=1
   - ca-certificates=2018.4.16=0
   - cairo=1.14.10=0
   - cerberus=1.2=py36_0
   - certifi=2018.4.16=py36_0
   - cffi=1.11.5=py36_0
+  - cftime=1.0.0b1=py36_0
   - chardet=3.0.4=py36_0
   - clyent=1.2.2=py36_0
   - cryptography=2.2.1=py36_0
@@ -70,7 +71,8 @@ dependencies:
   - idna=2.6=py36_1
   - imagesize=1.0.0=py36_0
   - ipykernel=4.8.2=py36_0
-  - ipython=6.3.1=py36_0
+  - ipyparallel=6.1.1=py36_1
+  - ipython=6.4.0=py36_0
   - ipython_genutils=0.2.0=py36_0
   - ipywidgets=7.2.1=py36_1
   - jdcal=1.4=py36_0
@@ -102,6 +104,7 @@ dependencies:
   - mako=1.0.7=py36_0
   - markupsafe=1.0=py36_0
   - matplotlib=2.2.2=py36_1
+  - mdanalysis=0.18.0=py36_0
   - mdtraj=1.9.1=py36_1
   - mistune=0.8.3=py36_1
   - mmtf-python=1.1.0=py_0
@@ -113,17 +116,17 @@ dependencies:
   - mpi4py=3.0.0=py36_0
   - mpich=3.2.1=0
   - mpmath=1.0.0=py_0
-  - msgpack-python=0.5.6=py36_0
+  - msgpack-python=0.5.6=py36h2d50403_2
   - msmtools=1.2.1=py36_1
   - multiprocess=0.70.5=py36_0
   - natsort=5.3.0=py_0
   - nbconvert=5.3.1=py_1
   - nbformat=4.4.0=py36_0
   - ncurses=5.9=10
-  - netcdf4=1.3.1=py36_3
+  - netcdf4=1.4.0=py36_0
   - networkx=2.1=py36_0
   - nglview=1.0=py36_1
-  - notebook=5.4.1=py36_0
+  - notebook=5.5.0=py36_0
   - numba=0.38.0=py36_0
   - numexpr=2.6.5=py36_0
   - numpy=1.14.3=py36_blas_openblas_200
@@ -135,7 +138,7 @@ dependencies:
   - packaging=17.1=py_0
   - pamela=0.3.0=py36_0
   - pandas=0.22.0=py36_1
-  - pandoc=2.2=0
+  - pandoc=2.2.1=0
   - pandocfilters=1.4.2=py36_0
   - parso=0.2.0=py_0
   - path.py=10.3.1=py36_0
@@ -151,7 +154,7 @@ dependencies:
   - pluggy=0.6.0=py_0
   - pox=0.2.3=py36_0
   - ppft=1.6.4.7.1=py36_0
-  - progress_reporter=1.4.1=py_0
+  - progress_reporter=1.3.1=py36_0
   - prompt_toolkit=1.0.15=py36_0
   - psutil=5.4.5=py36_0
   - ptyprocess=0.5.2=py36_0
@@ -159,6 +162,7 @@ dependencies:
   - pybtex=0.21=py36_0
   - pybtex-docutils=0.2.1=py36_0
   - pycparser=2.18=py36_0
+  - pyemma=2.4=py36_2
   - pygments=2.2.0=py36_0
   - pymbar=3.0.3=py36_1
   - pyopenssl=17.5.0=py36_1
@@ -181,12 +185,13 @@ dependencies:
   - pyyaml=3.12=py36_1
   - pyzmq=17.0.0=py36_4
   - qt=5.6.2=7
-  - quaternion=2018.5.2.21.39.8=py36_0
+  - quaternion=2018.5.10.13.50.12=py36_2
   - readline=7.0=0
   - requests=2.18.4=py36_1
   - s3transfer=0.1.13=py36_0
   - scikit-learn=0.19.1=py36_blas_openblas_201
-  - scipy=1.0.1=py36_blas_openblas_200
+  - scipy=1.1.0=py36_blas_openblas_200
+  - seaborn=0.8.1=py36_0
   - send2trash=1.5.0=py_0
   - setuptools=39.1.0=py36_0
   - simplegeneric=0.8.1=py36_0
@@ -205,7 +210,7 @@ dependencies:
   - thermotools=0.2.6=py36_2
   - tk=8.6.7=0
   - tornado=5.0.2=py36_0
-  - tqdm=4.23.2=py_0
+  - tqdm=4.23.3=py_0
   - traitlets=4.3.2=py36_0
   - typing=3.6.4=py36_0
   - urllib3=1.22=py36_0
@@ -228,7 +233,8 @@ dependencies:
   - parmed=3.0.1=py36_1
   - pdbfixer=1.5=py36_0
   - pip:
-    - numpy-quaternion==2018.5.2.21.39.8
+    - msgpack==0.5.6
+    - numpy-quaternion==2018.5.10.13.50.12
     - tables==3.4.3
-prefix: /home/diego/Myopt/Miniconda/miniconda3/envs/pynterpred
+prefix: /home/diego/Myusr/opt/miniconda3/envs/pynterpred
 
