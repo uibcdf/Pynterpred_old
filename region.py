@@ -5,7 +5,8 @@ from . import utils
 
 class Region():
 
-    def __init__(self):
+    def __init__(self, receptor=None, ligand=None, centers='in_layer', distribution='regular_cartesian', delta_x=0.25
+                 ,qregion='All',qdistribution='healpix',nside=8):
 
         self.centers=None
         self.ijk_centers=None
@@ -13,6 +14,12 @@ class Region():
         self.qrotors=None
         self.num_rotors=None
         self.nside=None
+
+        if (receptor is not None) and (ligand is not None):
+            if centers=='in_layer':
+                self.centers_in_layer(distribution, receptor, ligand, delta_x)
+            if qdistribution=='healpix':
+                self.rotators_in_quaternions_region(qregion,qdistribution,nside)
 
         pass
 
@@ -146,3 +153,36 @@ class Region():
                 del(qrotors)
         pass
 
+    def extract_subregion(self,centers=None, qrotors=None):
+
+        tmp_subregion=Region()
+
+        if centers is None:
+            tmp_subregion.centers     = self.centers
+            tmp_subregion.ijk_centers = self.ijk_centers
+        else:
+            tmp_subregion.centers     = self.centers[centers]
+            tmp_subregion.ijk_centers = self.ijk_centers[centers]
+
+        if qrotors is None:
+            tmp_subregion.qrotors = self.qrotors
+        else:
+            tmp_subregion.qrotors = self.qrotors[qrotors]
+
+        tmp_subregion.num_rotors = len(self.qrotors)
+        tmp_subregion.num_centers = len(self.centers)
+
+        return tmp_subregion
+
+    def split_in_subregions(self,num_subregions=None):
+
+        tmp_subregions=[]
+
+        if self.num_rotors>=num_subregions:
+            lists_qrotor_indices=np.array_split(np.arange(self.num_rotors,dtype=int),num_subregions)
+            tmp_subregions=[self.extract_subregion(qrotors=list_qrotors) for list_qrotors in lists_qrotor_indices]
+
+        else:
+            "not yet"
+
+        return tmp_subregions
