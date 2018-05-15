@@ -3,3 +3,4 @@ from .main import *
 from . import utils as utils
 from .region import *
 from .docking import docking
+from .docking import Docker
