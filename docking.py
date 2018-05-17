@@ -3,6 +3,7 @@ from mpi4py import MPI
 from simtk import unit
 from copy import deepcopy
 import dill as pickle
+import tqdm
 
 class Docker:
 
@@ -14,7 +15,7 @@ class Docker:
 
     def evaluation(self):
         tmp_energies=[]
-        for qrotor in self.region.qrotors:
+        for qrotor in tqdm.tqdm(self.region.qrotors):
             for center in self.region.centers:
                 self.mmcontext.make_conformation(center*unit.nanometer,qrotor)
                 tmp_energies.append(self.mmcontext.get_potential_energy()._value)

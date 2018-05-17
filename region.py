@@ -5,30 +5,33 @@ from . import utils
 
 class Region():
 
-    def __init__(self, receptor=None, ligand=None, centers='in_layer', distribution='regular_cartesian', delta_x=0.25
-                 ,qregion='All',qdistribution='healpix',nside=8):
+    def __init__(self, receptor=None, ligand=None, centers='in_layer', centers_distribution='regular_cartesian', delta_x=0.25
+                 ,rotations='All',rotations_distribution='healpix',nside=8):
 
         self.centers=None
         self.ijk_centers=None
+        self.net_centers=None
         self.num_centers=None
-        self.qrotors=None
-        self.num_rotors=None
+
+        self.rotations=None
+        self.net_rotations=None
+        self.num_rotations=None
         self.nside=None
 
         if (receptor is not None) and (ligand is not None):
             if centers=='in_layer':
-                self.centers_in_layer(distribution, receptor, ligand, delta_x)
-            if qdistribution=='healpix':
-                self.rotators_in_quaternions_region(qregion,qdistribution,nside)
+                self.centers_in_layer(centers_distribution, receptor, ligand, delta_x)
+            if rotations_distribution=='healpix':
+                self.rotations_in_quaternions_region(rotations,rotations_distribution,nside)
 
         pass
 
-    def centers_in_sphere(self,distribution="regular_cartesian", rmax=None, delta_x=None):
+    def centers_in_sphere(self,centers_distribution="regular_cartesian", rmax=None, delta_x=None):
         '''
-        distribution=regular_cartesian, regular_polar, uniform
+        centers_distribution=regular_cartesian, regular_polar, uniform
         '''
 
-        if distribution=="regular_cartesian":
+        if centers_distribution=="regular_cartesian":
 
             volume_explored = (4.0/3.0)*np.pi*(rmax**3)
             nx_2       = np.int(np.ceil(rmax/delta_x))
@@ -61,15 +64,15 @@ class Region():
             del(prov_centers,prov_ijk_centers,prov_dist_centers,mask_in_sphere)
 
 
-    def centers_in_layer(self,distribution="regular_cartesian", receptor=None, ligand=None, delta_x=None):
+    def centers_in_layer(self,centers_distribution="regular_cartesian", receptor=None, ligand=None, delta_x=None):
         '''
-        distribution=regular_cartesian, regular_polar, uniform
+        centers_distribution=regular_cartesian, regular_polar, uniform
         '''
 
         hbond_dist = 0.25
         receptor_positions = np.array(receptor.positions._value)
 
-        if distribution=="regular_cartesian":
+        if centers_distribution=="regular_cartesian":
 
             _, d_max_rec=utils.furthest_accessible_atom_to_center(receptor)
             _, d_max_lig=utils.furthest_accessible_atom_to_center(ligand)
@@ -138,22 +141,22 @@ class Region():
 
         pass
 
-    def rotators_in_quaternions_region(self,qregion='All',qdistribution='healpix',nside=8):
+    def rotations_in_quaternions_region(self,rotations='All',rotations_distribution='healpix',nside=8):
 
-        if qregion=='All':
-            if qdistribution=='healpix': #nside debe ser potencia de 2 para que sea regular y tengan 8 vecinos cada uno
+        if rotations=='All':
+            if rotations_distribution=='healpix': #nside debe ser potencia de 2 para que sea regular y tengan 8 vecinos cada uno
                 NSIDE=nside
-                num_rotors=hp.nside2npix(NSIDE)
-                sphere_coors=hp.pix2ang(NSIDE,np.arange(num_rotors),nest=False)
-                qrotors=quaternion.from_spherical_coords(sphere_coors[0],sphere_coors[1])
+                num_rotations=hp.nside2npix(NSIDE)
+                sphere_coors=hp.pix2ang(NSIDE,np.arange(num_rotations),nest=False)
+                rotations=quaternion.from_spherical_coords(sphere_coors[0],sphere_coors[1])
 
-                self.qrotors=qrotors
+                self.rotations=rotations
                 self.nside=nside
-                self.num_rotors=num_rotors
-                del(qrotors)
+                self.num_rotations=num_rotations
+                del(rotations)
         pass
 
-    def extract_subregion(self,centers=None, qrotors=None):
+    def extract_subregion(self,centers=None, rotations=None):
 
         tmp_subregion=Region()
 
@@ -164,12 +167,12 @@ class Region():
             tmp_subregion.centers     = self.centers[centers]
             tmp_subregion.ijk_centers = self.ijk_centers[centers]
 
-        if qrotors is None:
-            tmp_subregion.qrotors = self.qrotors
+        if rotations is None:
+            tmp_subregion.rotations = self.rotations
         else:
-            tmp_subregion.qrotors = self.qrotors[qrotors]
+            tmp_subregion.rotations = self.rotations[rotations]
 
-        tmp_subregion.num_rotors = len(self.qrotors)
+        tmp_subregion.num_rotations = len(self.rotations)
         tmp_subregion.num_centers = len(self.centers)
 
         return tmp_subregion
@@ -178,9 +181,9 @@ class Region():
 
         tmp_subregions=[]
 
-        if self.num_rotors>=num_subregions:
-            lists_qrotor_indices=np.array_split(np.arange(self.num_rotors,dtype=int),num_subregions)
-            tmp_subregions=[self.extract_subregion(qrotors=list_qrotors) for list_qrotors in lists_qrotor_indices]
+        if self.num_rotations>=num_subregions:
+            lists_rotation_indices=np.array_split(np.arange(self.num_rotations,dtype=int),num_subregions)
+            tmp_subregions=[self.extract_subregion(rotations=list_rotations) for list_rotations in lists_rotation_indices]
 
         else:
             "not yet"
