@@ -1,7 +1,9 @@
 import numpy as np
+import networkx as nx
 import quaternion
 import healpy as hp
 from . import utils
+from sklearn.neighbors import NearestNeighbors
 
 class Region():
 
@@ -18,12 +20,14 @@ class Region():
         self.num_rotations=None
         self.nside=None
 
+        self.net=None
+
         if (receptor is not None) and (ligand is not None):
             if centers=='in_layer':
                 self.centers_in_layer(centers_distribution, receptor, ligand, delta_x)
             if rotations_distribution=='healpix':
                 self.rotations_in_quaternions_region(rotations,rotations_distribution,nside)
-
+            self.net=nx.cartesian_product(self.net_rotations,self.net_centers)
         pass
 
     def centers_in_sphere(self,centers_distribution="regular_cartesian", rmax=None, delta_x=None):
@@ -34,16 +38,16 @@ class Region():
         if centers_distribution=="regular_cartesian":
 
             volume_explored = (4.0/3.0)*np.pi*(rmax**3)
-            nx_2       = np.int(np.ceil(rmax/delta_x))
-            nx         =2*nx_2+1
-            prov_num_centers =nx*nx*nx
+            num_bins_x_2       = np.int(np.ceil(rmax/delta_x))
+            num_bins_x         =2*num_bins_x_2+1
+            prov_num_centers =num_bins_x*num_bins_x*num_bins_x
             prov_centers    = np.empty((prov_num_centers,3),dtype=float)
             prov_ijk_centers= np.empty((prov_num_centers,3),dtype=int)
 
             h=0
-            for ii in range(-nx_2,nx_2+1):
-                for jj in range(-nx_2,nx_2+1):
-                    for kk in range(-nx_2,nx_2+1):
+            for ii in range(-num_bins_x_2,num_bins_x_2+1):
+                for jj in range(-num_bins_x_2,num_bins_x_2+1):
+                    for kk in range(-num_bins_x_2,num_bins_x_2+1):
                         prov_ijk_centers[h,:]=[ii,jj,kk]
                         h+=1
 
@@ -79,17 +83,17 @@ class Region():
             _, d_min_lig=utils.closest_accessible_atom_to_center(ligand)
 
             Lbox = 2*d_max_rec+2*d_max_lig+hbond_dist #añado hbond distance
-            nx_2       = np.int(np.ceil((Lbox/2.0)/delta_x))
-            nx         =2*nx_2+1
-            prov_num_centers =nx*nx*nx
+            num_bins_x_2       = np.int(np.ceil((Lbox/2.0)/delta_x))
+            num_bins_x         =2*num_bins_x_2+1
+            prov_num_centers =num_bins_x*num_bins_x*num_bins_x
 
             prov_centers    = np.empty((prov_num_centers,3),dtype=float)
             prov_ijk_centers= np.empty((prov_num_centers,3),dtype=int)
 
             h=0
-            for ii in range(-nx_2,nx_2+1):
-                for jj in range(-nx_2,nx_2+1):
-                    for kk in range(-nx_2,nx_2+1):
+            for ii in range(-num_bins_x_2,num_bins_x_2+1):
+                for jj in range(-num_bins_x_2,num_bins_x_2+1):
+                    for kk in range(-num_bins_x_2,num_bins_x_2+1):
                         prov_ijk_centers[h,:]=[ii,jj,kk]
                         h+=1
 
@@ -139,6 +143,11 @@ class Region():
             self.num_centers = prov_centers.shape[0]
             del(prov_centers,prov_ijk_centers,prov_dist_centers,mask_in)
 
+            neigh = NearestNeighbors(radius=1, metric='chebyshev')
+            neigh.fit(self.ijk_centers)
+            self.net_centers=nx.from_scipy_sparse_matrix(neigh.radius_neighbors_graph())
+            del(neigh)
+
         pass
 
     def rotations_in_quaternions_region(self,rotations='All',rotations_distribution='healpix',nside=8):
@@ -150,10 +159,17 @@ class Region():
                 sphere_coors=hp.pix2ang(NSIDE,np.arange(num_rotations),nest=False)
                 rotations=quaternion.from_spherical_coords(sphere_coors[0],sphere_coors[1])
 
+                self.net_rotations=nx.Graph()
+                self.net_rotations.add_nodes_from(range(num_rotations))
+                for ii in range(num_rotations):
+                    neighs=hp.get_all_neighbours(NSIDE,ii,nest=False)
+                    neighs[neighs==-1]=0
+                    self.net_rotations.add_edges_from(zip(np.full(neighs.shape[0],ii), neighs))
+
                 self.rotations=rotations
                 self.nside=nside
                 self.num_rotations=num_rotations
-                del(rotations)
+                del(rotations,neighs)
         pass
 
     def extract_subregion(self,centers=None, rotations=None):
@@ -189,3 +205,8 @@ class Region():
             "not yet"
 
         return tmp_subregions
+
+    def _set_nodes_attribute(self,attribute_name,attribute_values):
+
+        for ii,jj in zip(list(self.net.nodes),attribute_values):
+            self.net.nodes[ii][attribute_name]=jj

@@ -15,12 +15,14 @@ class Docker:
 
     def evaluation(self):
         tmp_energies=[]
-        for qrotor in tqdm.tqdm(self.region.qrotors):
+        for rotation in tqdm.tqdm(self.region.rotations):
             for center in self.region.centers:
-                self.mmcontext.make_conformation(center*unit.nanometer,qrotor)
+                self.mmcontext.make_conformation(center*unit.nanometer,rotation)
                 tmp_energies.append(self.mmcontext.get_potential_energy()._value)
 
         self.potential_energies=tmp_energies
+        del(tmp_energies)
+        self.region._set_nodes_attribute('Potential_Energy',self.potential_energies)
 
     def dump_energies(self,pickle_file=None):
         tmp_file=open(pickle_file,"wb")
