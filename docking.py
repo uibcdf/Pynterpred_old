@@ -23,11 +23,20 @@ class Docker:
         self.potential_energies=tmp_energies
         del(tmp_energies)
         self.region._set_nodes_attribute('Potential_Energy',self.potential_energies)
+        self._remove_forbidden_region()
 
     def dump_energies(self,pickle_file=None):
         tmp_file=open(pickle_file,"wb")
         tmp_file.write(pickle.dumps(self.potential_energies))
         tmp_file.close()
+
+    def _remove_forbidden_region(self,uncoupled_distance=100000.0*unit.nanometer):
+
+        self.mmcontext.center_ligand(center=[1.0,0.0,0.0]*uncoupled_distance)
+        uncoupled_energy= self.mmcontext.get_potential_energy()
+        nodes_to_remove = [node for node, attributes in self.region.net.nodes(data=True) if attributes['Potential_Energy']>uncoupled_energy]
+        print(len(nodes_to_remove))
+        self.region.net.remove_nodes_from(nodes_to_remove)
 
     # def load(self,pickle_file=None):
         # tmp_file   = open(pickle_file, "rb")
