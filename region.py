@@ -8,8 +8,7 @@ from sklearn.neighbors import NearestNeighbors
 
 class Region():
 
-    def __init__(self, receptor=None, ligand=None, centers='in_layer', centers_distribution='regular_cartesian', delta_x=0.25
-                 ,rotations='All',rotations_distribution='healpix',nside=8):
+    def __init__(self, receptor=None, ligand=None, centers='in_layer', centers_distribution='regular_cartesian', delta_x=0.25, rotations='All', rotations_distribution='healpix', nside=8, with_network=True):
 
         self.centers=None
         self.ijk_centers=None
@@ -21,55 +20,59 @@ class Region():
         self.num_rotations=None
         self.nside=None
 
+        self.with_network=with_network
         self.net=None
 
         if (receptor is not None) and (ligand is not None):
             if centers=='in_layer':
-                self.centers_in_layer(centers_distribution, receptor, ligand, delta_x)
+                self.centers_in_layer(centers_distribution, receptor, ligand, delta_x, with_network)
             if rotations_distribution=='healpix':
-                self.rotations_in_quaternions_region(rotations,rotations_distribution,nside)
-            self.net=nx.cartesian_product(self.net_rotations,self.net_centers)
+                self.rotations_in_quaternions_region(rotations, rotations_distribution, nside,
+                                                     with_network)
+            if with_network:
+                self.net=nx.cartesian_product(self.net_rotations,self.net_centers)
         pass
 
-    def centers_in_sphere(self,centers_distribution="regular_cartesian", rmax=None, delta_x=None):
-        '''
-        centers_distribution=regular_cartesian, regular_polar, uniform
-        '''
+    ### def centers_in_sphere(self,centers_distribution="regular_cartesian", rmax=None, delta_x=None):
+    ###     '''
+    ###     centers_distribution=regular_cartesian, regular_polar, uniform
+    ###     '''
 
-        if centers_distribution=="regular_cartesian":
+    ###     if centers_distribution=="regular_cartesian":
 
-            volume_explored = (4.0/3.0)*np.pi*(rmax**3)
-            num_bins_x_2       = np.int(np.ceil(rmax/delta_x))
-            num_bins_x         =2*num_bins_x_2+1
-            prov_num_centers =num_bins_x*num_bins_x*num_bins_x
-            prov_centers    = np.empty((prov_num_centers,3),dtype=float)
-            prov_ijk_centers= np.empty((prov_num_centers,3),dtype=int)
+    ###         volume_explored = (4.0/3.0)*np.pi*(rmax**3)
+    ###         num_bins_x_2       = np.int(np.ceil(rmax/delta_x))
+    ###         num_bins_x         =2*num_bins_x_2+1
+    ###         prov_num_centers =num_bins_x*num_bins_x*num_bins_x
+    ###         prov_centers    = np.empty((prov_num_centers,3),dtype=float)
+    ###         prov_ijk_centers= np.empty((prov_num_centers,3),dtype=int)
 
-            h=0
-            for ii in range(-num_bins_x_2,num_bins_x_2+1):
-                for jj in range(-num_bins_x_2,num_bins_x_2+1):
-                    for kk in range(-num_bins_x_2,num_bins_x_2+1):
-                        prov_ijk_centers[h,:]=[ii,jj,kk]
-                        h+=1
+    ###         h=0
+    ###         for ii in range(-num_bins_x_2,num_bins_x_2+1):
+    ###             for jj in range(-num_bins_x_2,num_bins_x_2+1):
+    ###                 for kk in range(-num_bins_x_2,num_bins_x_2+1):
+    ###                     prov_ijk_centers[h,:]=[ii,jj,kk]
+    ###                     h+=1
 
-            prov_centers=delta_x*prov_ijk_centers
-            prov_dist_centers=np.linalg.norm(prov_centers,axis=1)
-            rank_dists = np.argsort(prov_dist_centers)
-            prov_dist_centers = prov_dist_centers[rank_dists]
-            prov_ijk_centers  = prov_ijk_centers[rank_dists]
-            prov_centers      = prov_centers[rank_dists]
-            mask_in_sphere    = (prov_dist_centers<=rmax)
-            prov_centers       = prov_centers[mask_in_sphere]
-            prov_ijk_centers   = prov_ijk_centers[mask_in_sphere]
-            prov_dist_centers = prov_dist_centers[mask_in_sphere]
+    ###         prov_centers=delta_x*prov_ijk_centers
+    ###         prov_dist_centers=np.linalg.norm(prov_centers,axis=1)
+    ###         rank_dists = np.argsort(prov_dist_centers)
+    ###         prov_dist_centers = prov_dist_centers[rank_dists]
+    ###         prov_ijk_centers  = prov_ijk_centers[rank_dists]
+    ###         prov_centers      = prov_centers[rank_dists]
+    ###         mask_in_sphere    = (prov_dist_centers<=rmax)
+    ###         prov_centers       = prov_centers[mask_in_sphere]
+    ###         prov_ijk_centers   = prov_ijk_centers[mask_in_sphere]
+    ###         prov_dist_centers = prov_dist_centers[mask_in_sphere]
 
-            self.centers = prov_centers[::-1]
-            self.ijk_centers = prov_ijk_centers[::-1]
-            self.num_centers = prov_centers.shape(0)
-            del(prov_centers,prov_ijk_centers,prov_dist_centers,mask_in_sphere)
+    ###         self.centers = prov_centers[::-1]
+    ###         self.ijk_centers = prov_ijk_centers[::-1]
+    ###         self.num_centers = prov_centers.shape(0)
+    ###         del(prov_centers,prov_ijk_centers,prov_dist_centers,mask_in_sphere)
 
 
-    def centers_in_layer(self,centers_distribution="regular_cartesian", receptor=None, ligand=None, delta_x=None):
+    def centers_in_layer(self,centers_distribution="regular_cartesian", receptor=None, ligand=None,
+                         delta_x=None, with_network=True):
         '''
         centers_distribution=regular_cartesian, regular_polar, uniform
         '''
@@ -144,14 +147,16 @@ class Region():
             self.num_centers = prov_centers.shape[0]
             del(prov_centers,prov_ijk_centers,prov_dist_centers,mask_in)
 
-            neigh = NearestNeighbors(radius=1, metric='chebyshev')
-            neigh.fit(self.ijk_centers)
-            self.net_centers=nx.from_scipy_sparse_matrix(neigh.radius_neighbors_graph())
-            del(neigh)
+            if with_network:
+                neigh = NearestNeighbors(radius=1, metric='chebyshev')
+                neigh.fit(self.ijk_centers)
+                self.net_centers=nx.from_scipy_sparse_matrix(neigh.radius_neighbors_graph())
+                del(neigh)
 
         pass
 
-    def rotations_in_quaternions_region(self,rotations='All',rotations_distribution='healpix',nside=8):
+    def rotations_in_quaternions_region(self, rotations='All', rotations_distribution='healpix',
+                                        nside=8, with_network=True):
 
         if rotations=='All':
             if rotations_distribution=='healpix': #nside debe ser potencia de 2 para que sea regular y tengan 8 vecinos cada uno
@@ -159,17 +164,18 @@ class Region():
                 num_rotations=hp.nside2npix(NSIDE)
                 sphere_coors=hp.pix2ang(NSIDE,np.arange(num_rotations),nest=False)
                 rotations=quaternion.from_spherical_coords(sphere_coors[0],sphere_coors[1])
-
-                self.net_rotations=nx.Graph()
-                self.net_rotations.add_nodes_from(range(num_rotations))
-                for ii in range(num_rotations):
-                    neighs=hp.get_all_neighbours(NSIDE,ii,nest=False)
-                    neighs[neighs==-1]=0
-                    self.net_rotations.add_edges_from(zip(np.full(neighs.shape[0],ii), neighs))
-
                 self.rotations=rotations
                 self.nside=nside
                 self.num_rotations=num_rotations
+
+                if with_network:
+                    self.net_rotations=nx.Graph()
+                    self.net_rotations.add_nodes_from(range(num_rotations))
+                    for ii in range(num_rotations):
+                        neighs=hp.get_all_neighbours(NSIDE,ii,nest=False)
+                        neighs[neighs==-1]=0
+                        self.net_rotations.add_edges_from(zip(np.full(neighs.shape[0],ii), neighs))
+
                 del(rotations,neighs)
         pass
 
