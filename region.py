@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import kinnetmt as knmt
 import quaternion
 import healpy as hp
 from . import utils
@@ -210,3 +211,12 @@ class Region():
 
         for ii,jj in zip(list(self.net.nodes),attribute_values):
             self.net.nodes[ii][attribute_name]=jj
+
+    def _get_potential_energy_1D_landscape(self):
+
+        tmp_net = knmt.load(self.net,'native.PotentialEnergyNetwork') 
+        tmp_xx = tmp_net.get_landscape_bottom_up()
+        tmp_potential_energies = tmp_net.potential_energies
+        del(tmp_net)
+        return tmp_xx, tmp_potential_energies
+

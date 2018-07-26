@@ -217,8 +217,30 @@ class MMContext:
     def get_potential_energy(self):
         return self.context.getState(getEnergy=True).getPotentialEnergy()
 
-    def get_potential_energy_coupling(self):
-        pass
+    def get_potential_energy_uncoupled_complex(self):
+
+        return self.get_potential_energy_ligand("original") + self.get_potential_energy_receptor("original")
+
+    def get_potential_energy_ligand(self,conformation="original"):
+
+        tmp_ligand = self.get_ligand(conformation)
+        tmp_system = tmp_ligand.forcefield.createSystem(tmp_ligand.topology, nonbondedMethod=app.NoCutoff) # constraints=app.HBonds, implicit=)
+        tmp_context = openmm.Context(tmp_system, openmm.VerletIntegrator(1.0 * unit.femtoseconds))
+        tmp_context.setPositions(tmp_ligand.positions)
+        tmp_pe = tmp_context.getState(getEnergy=True).getPotentialEnergy()
+        del(tmp_ligand, tmp_system, tmp_context)
+        return tmp_pe
+
+    def get_potential_energy_receptor(self,conformation="original"):
+
+        tmp_receptor = self.get_receptor(conformation)
+        tmp_system = tmp_receptor.forcefield.createSystem(tmp_receptor.topology, nonbondedMethod=app.NoCutoff) # constraints=app.HBonds, implicit=)
+        tmp_context = openmm.Context(tmp_system, openmm.VerletIntegrator(1.0 * unit.femtoseconds))
+        tmp_context.setPositions(tmp_receptor.positions)
+        tmp_pe = tmp_context.getState(getEnergy=True).getPotentialEnergy()
+        del(tmp_receptor, tmp_system, tmp_context)
+        return tmp_pe
+
 
 
     def center_ligand(self,center=None,conformation='original'):
@@ -253,3 +275,20 @@ class MMContext:
     def make_view(self,positions=None):
 
         return utils.make_view(self.get_molcomplex(conformation="context"),positions)
+
+def pynterpred (receptor_pdb_file=None, ligand_pdb_file=None, forcefield=None, pH=7.0,
+               delta_x=0.5, nside=5, ):
+
+    from .region import Region as _Region
+    from .docking import Docker as _Docker
+
+    tmp_receptor = Receptor(receptor_pdb_file,forcefield,pH)
+    tmp_ligand   = Ligand(ligand_pdb_file,forcefield,pH)
+    tmp_region   = _Region(tmp_receptor, tmp_ligand, delta_x=delta_x, nside=nside)
+    tmp_context  = MMContext(tmp_receptor,tmp_ligand)
+    tmp_docking  = _Docker(tmp_context,tmp_region)
+    tmp_docking.evaluation()
+    del(tmp_receptor, tmp_ligand, tmp_region)
+    del(_Region, _Docker)
+    return tmp_docking
+
