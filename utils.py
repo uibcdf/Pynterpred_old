@@ -52,11 +52,24 @@ def closest_accessible_atom_to_center(macromolecule,probe_radius=0.227,n_sphere_
 
     return list_atoms_exposed[arg_exposed], dists[arg_exposed]
 
-def center_positions_in_cartesian_origin(positions):
+def geometrical_center_in_origin(Macromolecule):
 
-    tmp_unit = positions.unit
-    geometrical_center=np.array(positions._value).mean(axis=0)
-    return (positions - geometrical_center*tmp_unit)
+    # with heavy atoms only to avoid lack of reproducilibity when Hs added.
+
+    tmp_unit = Macromolecule.positions.unit
+
+    atoms_symbols = []
+    for atom in Macromolecule.topology.atoms():
+        atoms_symbols.append(atom.element.symbol)
+
+    atoms_symbols = np.array(atoms_symbols)
+
+    positions_value_heavy_atoms = np.array(Macromolecule.positions._value)[atoms_symbols!='H']
+    geometrical_center=positions_value_heavy_atoms.mean(axis=0)*tmp_unit
+
+    del(atoms_symbols,positions_value_heavy_atoms,tmp_unit)
+
+    return (Macromolecule.positions - geometrical_center)
 
 def rgb2hex(rgb):
 

@@ -5,24 +5,6 @@ import quaternion
 from . import utils as utils
 
 from copy import deepcopy
-# from tqdm import tqdm
-
-# import mdtraj
-# import nglview
-
-
-# def write_pdb(topology, positions, filename):
-#     with open(filename, 'w') as outfile:
-#         app.PDBFile.writeFile(topology, positions, outfile)
-
-# def make_view(topology, positions):
-#     mdtraj_aux_topology = mdtraj.Topology.from_openmm(topology)
-#     traj_aux = mdtraj.Trajectory(positions/unit.nanometers, mdtraj_aux_topology)
-#     view = nglview.show_mdtraj(traj_aux)
-#     view.clear()
-#     view.add_ball_and_stick('all')
-#     view.center()
-#     return view
 
 class _Units():
 
@@ -33,7 +15,8 @@ class _Units():
 
 class Macromolecule():
 
-    def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=True):
+    def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=True,
+                 mpi_comm=None):
 
         self._units      = _Units()
         self.pdb_file    = None
@@ -46,6 +29,7 @@ class Macromolecule():
         self.__addHs_log = None
 
         if pdb_file:
+
             pdb_aux  = app.PDBFile(pdb_file)
             self.modeller = app.Modeller(pdb_aux.topology, pdb_aux.positions)
             self.forcefield = app.ForceField(forcefield)
@@ -56,15 +40,44 @@ class Macromolecule():
             self.positions = self.modeller.getPositions()
             self.n_atoms   = len(self.positions)
 
-            self._positions_centered=utils.center_positions_in_cartesian_origin(self.positions)
+            self._positions_centered=utils.geometrical_center_in_origin(self)
             if center:
                 self.set_positions(self._positions_centered)
+
+            if mpi_comm is not None:
+                self.equal_positions_across_MPI_Universe(mpi_comm)
 
     def set_positions(self,positions):
 
         self.modeller.positions  = deepcopy(positions)
-        self.positions          = self.modeller.getPositions()
+        self.positions           = self.modeller.getPositions()
 
+    def get_positions(self,positions):
+
+        return self.positions
+
+    def equal_positions_across_MPI_Universe(self,mpi_comm=None):
+
+        _my_rank = mpi_comm.Get_rank()
+
+        if _my_rank == 0:
+            universal_positions = self.positions._value
+        else:
+            _positions_shape = self.positions._value.shape
+            _positions_dtype = self.positions._value.dtype
+            universal_positions = np.empty(_positions_shape, dtype=_positions_dtype)
+
+        mpi_comm.Bcast(universal_positions, root=0)
+
+        if _my_rank != 0:
+            _positions_unit = self.positions.unit
+            self.set_positions(universal_positions*_positions_unit)
+            del(_positions_shape, _positions_dtype, _positions_unit)
+
+        del(universal_positions, _my_rank)
+        mpi_comm.Barrier()
+
+        pass
 
 class Receptor(Macromolecule):
 
