@@ -8,29 +8,24 @@ from sklearn.neighbors import NearestNeighbors
 
 class Region():
 
-    def __init__(self, receptor=None, ligand=None, centers='in_layer', centers_distribution='regular_cartesian', delta_x=0.25, rotations='All', rotations_distribution='healpix', nside=8, with_network=True):
+    def __init__(self, receptor=None, ligand=None, centers='in_layer', centers_distribution='regular_cartesian',
+                 delta_x=0.25, rotations='All', rotations_distribution='healpix', nside=8):
 
         self.centers=None
         self.ijk_centers=None
-        self.net_centers=None
         self.num_centers=None
 
         self.rotations=None
-        self.net_rotations=None
         self.num_rotations=None
         self.nside=None
 
-        self.with_network=with_network
-        self.net=None
-
         if (receptor is not None) and (ligand is not None):
+
             if centers=='in_layer':
-                self.centers_in_layer(centers_distribution, receptor, ligand, delta_x, with_network)
+                self.centers_in_layer(centers_distribution, receptor, ligand, delta_x)
             if rotations_distribution=='healpix':
-                self.rotations_in_quaternions_region(rotations, rotations_distribution, nside,
-                                                     with_network)
-            if with_network:
-                self.net=nx.cartesian_product(self.net_rotations,self.net_centers)
+                self.rotations_in_quaternions_region(rotations, rotations_distribution, nside)
+
         pass
 
     ### def centers_in_sphere(self,centers_distribution="regular_cartesian", rmax=None, delta_x=None):
@@ -147,58 +142,44 @@ class Region():
             self.num_centers = prov_centers.shape[0]
             del(prov_centers,prov_ijk_centers,prov_dist_centers,mask_in)
 
-            if with_network:
-                neigh = NearestNeighbors(radius=1, metric='chebyshev')
-                neigh.fit(self.ijk_centers)
-                self.net_centers=nx.from_scipy_sparse_matrix(neigh.radius_neighbors_graph())
-                del(neigh)
-
-        pass
-
     def rotations_in_quaternions_region(self, rotations='All', rotations_distribution='healpix',
                                         nside=8, with_network=True):
 
         if rotations=='All':
             if rotations_distribution=='healpix': #nside debe ser potencia de 2 para que sea regular y tengan 8 vecinos cada uno
-                NSIDE=nside
-                num_rotations=hp.nside2npix(NSIDE)
-                sphere_coors=hp.pix2ang(NSIDE,np.arange(num_rotations),nest=False)
+                num_rotations=hp.nside2npix(nside)
+                sphere_coors=hp.pix2ang(nside,np.arange(num_rotations),nest=False)
                 rotations=quaternion.from_spherical_coords(sphere_coors[0],sphere_coors[1])
                 self.rotations=rotations
                 self.nside=nside
                 self.num_rotations=num_rotations
-
-                if with_network:
-                    self.net_rotations=nx.Graph()
-                    self.net_rotations.add_nodes_from(range(num_rotations))
-                    for ii in range(num_rotations):
-                        neighs=hp.get_all_neighbours(NSIDE,ii,nest=False)
-                        neighs[neighs==-1]=0
-                        self.net_rotations.add_edges_from(zip(np.full(neighs.shape[0],ii), neighs))
-
-                del(rotations,neighs)
+                del(rotations)
         pass
+
+    def make_ConformationalNetwork(self):
+
+        neigh = NearestNeighbors(radius=1, metric='chebyshev')
+        neigh.fit(self.ijk_centers)
+        net_centers=nx.from_scipy_sparse_matrix(neigh.radius_neighbors_graph())
+        del(neigh)
+
+        net_rotations=nx.Graph()
+        net_rotations.add_nodes_from(range(self.num_rotations))
+        for ii in range(self.num_rotations):
+            neighs=hp.get_all_neighbours(self.nside,ii,nest=False)
+            neighs[neighs==-1]=0
+            net_rotations.add_edges_from(zip(np.full(neighs.shape[0],ii), neighs))
+        del(neighs)
+
+        net=nx.cartesian_product(net_centers,net_rotations)
+
+        del(net_rotations,net_centers)
+
+        return net
 
     def extract_subregion(self,centers=None, rotations=None):
 
-        tmp_subregion=Region()
-
-        if centers is None:
-            tmp_subregion.centers     = self.centers
-            tmp_subregion.ijk_centers = self.ijk_centers
-        else:
-            tmp_subregion.centers     = self.centers[centers]
-            tmp_subregion.ijk_centers = self.ijk_centers[centers]
-
-        if rotations is None:
-            tmp_subregion.rotations = self.rotations
-        else:
-            tmp_subregion.rotations = self.rotations[rotations]
-
-        tmp_subregion.num_rotations = len(self.rotations)
-        tmp_subregion.num_centers = len(self.centers)
-
-        return tmp_subregion
+        pass
 
     def split_in_subregions(self,num_subregions=None):
 
@@ -212,17 +193,4 @@ class Region():
             "not yet"
 
         return tmp_subregions
-
-    def _set_nodes_attribute(self,attribute_name,attribute_values):
-
-        for ii,jj in zip(list(self.net.nodes),attribute_values):
-            self.net.nodes[ii][attribute_name]=jj
-
-    def _get_potential_energy_1D_landscape(self):
-
-        tmp_net = knmt.load(self.net,'native.PotentialEnergyNetwork') 
-        tmp_xx = tmp_net.get_landscape_bottom_up()
-        tmp_potential_energies = tmp_net.potential_energies
-        del(tmp_net)
-        return tmp_xx, tmp_potential_energies
 
