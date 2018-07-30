@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import kinnetmt as knmt
 from mpi4py import MPI
 from simtk import unit
 from copy import deepcopy
@@ -16,11 +17,15 @@ class Docker:
         self.mpi_comm = None
         self.mpi_rank = None
         self.mpi_size = None
+        self.potential_energy_uncoupled = mmcontext.get_potential_energy_uncoupled_complex()
+        self._energy_units = self.potential_energy_uncoupled.unit
 
         if mpi_comm is not None:
             self.mpi_comm = mpi_comm
             self.mpi_rank = mpi_comm.Get_rank()
             self.mpi_size = mpi_comm.Get_size()
+
+        del(mmcontext,region)
 
         pass
 
@@ -63,17 +68,18 @@ class Docker:
             self.mpi_comm.Barrier()
             time_taken_collecting = time.time()-time_start
             if self.mpi_rank is 0:
-                self.potential_energies = np.concatenate(self.potential_energies)
+                self.potential_energies = np.concatenate(self.potential_energies) * self._energy_units
 
             if verbose:
                 print('In mpi rank', self.mpi_rank, 'centers from', center_start, 'to', center_end,
-                      'in', time_taken_iters, 'seconds (', (center_end-center_start)/time_taken_iters,' its/sec)')
+                      'in', np.round(time_taken_iters,2), 'seconds (',
+                      np.round((center_end-center_start)/time_taken_iters,2),' its/sec)')
 
             if verbose and (self.mpi_rank == 0) :
-                print('Time to collect potential energies:',time_taken_collecting)
+                print('Time to collect potential energies:',np.round(time_taken_collecting,6))
 
         else:
-            self.potential_energies=tmp_energies
+            self.potential_energies=np.array(tmp_energies)*self._energy_units
             del(tmp_energies)
 
     def make_PotentialEnergyNetwork(self):
@@ -88,9 +94,9 @@ class Docker:
         if self.PotentialEnergyNetwork is None:
             self.make_PotentialEnergyNetwork()
 
-        tmp_net = knmt.load(self.net,'native.PotentialEnergyNetwork')
+        tmp_net = knmt.load(self.PotentialEnergyNetwork,'native.PotentialEnergyNetwork')
         tmp_xx = tmp_net.get_landscape_bottom_up()
-        tmp_potential_energies = tmp_net.potential_energies
+        tmp_potential_energies = tmp_net.potential_energies * self._energy_units
         del(tmp_net)
         return tmp_xx, tmp_potential_energies
 

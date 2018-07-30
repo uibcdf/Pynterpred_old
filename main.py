@@ -1,3 +1,5 @@
+import sys
+import time
 from simtk import openmm, unit
 from simtk.openmm import app
 import numpy as np
@@ -230,6 +232,11 @@ class MMContext:
     def get_potential_energy(self):
         return self.context.getState(getEnergy=True).getPotentialEnergy()
 
+    def get_energy_units(self):
+
+        tmp_energy = self.context.getState(getEnergy=True).getPotentialEnergy()
+        return tmp_energy.unit
+
     def get_potential_energy_uncoupled_complex(self):
 
         return self.get_potential_energy_ligand("original") + self.get_potential_energy_receptor("original")
@@ -289,19 +296,45 @@ class MMContext:
 
         return utils.make_view(self.get_molcomplex(conformation="context"),positions)
 
-def pynterpred (receptor_pdb_file=None, ligand_pdb_file=None, forcefield=None, pH=7.0,
-               delta_x=0.5, nside=5, ):
+def predict (receptor_pdb_file=None, ligand_pdb_file=None, forcefield=None, pH=7.0,
+               delta_x=0.5, nside=5, mpi_comm = None, verbose = False):
 
     from .region import Region as _Region
     from .docking import Docker as _Docker
 
-    tmp_receptor = Receptor(receptor_pdb_file,forcefield,pH)
-    tmp_ligand   = Ligand(ligand_pdb_file,forcefield,pH)
-    tmp_region   = _Region(tmp_receptor, tmp_ligand, delta_x=delta_x, nside=nside)
+    i_am_logger_out = False
+    if verbose:
+        if mpi_comm is None:
+            i_am_logger_out = True
+        elif (mpi_comm.Get_rank() == 0):
+            i_am_logger_out = True
+
+    if i_am_logger_out:
+        print("Setting up the mechanical molecular context... ", end="", flush=True)
+        time_start = time.time()
+    tmp_receptor = Receptor(receptor_pdb_file,forcefield,pH, mpi_comm=mpi_comm)
+    tmp_ligand   = Ligand(ligand_pdb_file,forcefield, pH, mpi_comm=mpi_comm)
     tmp_context  = MMContext(tmp_receptor,tmp_ligand)
-    tmp_docking  = _Docker(tmp_context,tmp_region)
-    tmp_docking.evaluation()
-    del(tmp_receptor, tmp_ligand, tmp_region)
+    if i_am_logger_out:
+        print(np.round(time.time()-time_start,2),'secs')
+        time_start = time.time()
+        print("Setting up the evaluation region... ", end="", flush=True)
+    tmp_region   = _Region(tmp_receptor, tmp_ligand, delta_x=delta_x, nside=nside)
+    tmp_docker  = _Docker(tmp_context, tmp_region, mpi_comm=mpi_comm)
+    if i_am_logger_out:
+        print(np.round(time.time()-time_start,2),'secs')
+        print("Evaluation of", tmp_region.num_centers*tmp_region.num_rotations , "different relative orientations started...")
+        time_start = time.time()
+    tmp_docker.evaluation(verbose=verbose)
+    if i_am_logger_out:
+        print(np.round(time.time()-time_start,2),'secs')
+        time_start = time.time()
+        print("Done")
+        print("Complex at infinite distance with Potential Energy:",
+              tmp_context.potential_energy_uncoupled)
+        print("Best relative orientation with Potential Energy:",
+              tmp_docker.potential_energies.min())
+    del(tmp_receptor, tmp_ligand, tmp_region, tmp_context)
     del(_Region, _Docker)
-    return tmp_docking
+    return tmp_docker
 
