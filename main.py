@@ -5,8 +5,8 @@ from simtk.openmm import app
 import numpy as np
 import quaternion
 from . import utils as utils
-
 from copy import deepcopy
+import dill as pickle
 
 class _Units():
 
@@ -20,15 +20,15 @@ class Macromolecule():
     def __init__(self, pdb_file=None, forcefield=None, pH=7.0, addHs=True, center=True,
                  mpi_comm=None):
 
-        self._units      = _Units()
-        self.pdb_file    = None
-        self.forcefield  = None
-        self.pH          = None
-        self.modeller    = None
-        self.topology    = None
-        self.positions   = None
-        self.n_atoms     = None
-        self.__addHs_log = None
+        self._units          = _Units()
+        self.pdb_file        = None
+        self.forcefield      = None
+        self.pH              = None
+        self.modeller        = None
+        self.topology        = None
+        self.positions       = None
+        self.n_atoms         = None
+        self.__addHs_log     = None
 
         if pdb_file:
 
@@ -104,26 +104,33 @@ class MolComplex(Macromolecule):
 
 class MMContext:
 
-    def __init__(self, receptor,ligand):
+    def __init__(self, receptor=None, ligand=None):
 
-        self._units     = _Units()
+        self._units      = _Units()
+        self._integrator = "VerletIntegrator"
 
-        self.receptor   = receptor
-        self.ligand     = ligand
-        self.molcomplex = MolComplex(receptor,ligand)
-
-        self._begins_receptor = 0
-        self._begins_ligand   = self.receptor.n_atoms
-
+        self.receptor   = None
+        self.ligand     = None
+        self.molcomplex = None
+        self._begins_receptor = None
+        self._begins_ligand   = None
         self.system     = None
         self.modeller   = None
         self.context    = None
 
-        self.modeller   = self.molcomplex.modeller
-        self.forcefield = receptor.forcefield
-        self.system     = self.forcefield.createSystem(self.molcomplex.topology, nonbondedMethod=app.NoCutoff) # constraints=app.HBonds, implicit=)
-        self.context    = openmm.Context(self.system, openmm.VerletIntegrator(1.0 * unit.femtoseconds))
-        self.context.setPositions(np.vstack([self.receptor.positions,self.ligand.positions]))
+        if (receptor is not None) and (ligand is not None):
+            self.receptor   = receptor
+            self.ligand     = ligand
+            self.molcomplex = MolComplex(receptor,ligand)
+            self._begins_receptor = 0
+            self._begins_ligand   = self.receptor.n_atoms
+            self.modeller   = self.molcomplex.modeller
+            self.forcefield = receptor.forcefield
+            self.system     = self.forcefield.createSystem(self.molcomplex.topology, nonbondedMethod=app.NoCutoff) # constraints=app.HBonds, implicit=)
+            if self._integrator == "VerletIntegrator": #seguro que no hace falta...
+                self.context    = openmm.Context(self.system, openmm.VerletIntegrator(1.0 * unit.femtoseconds))
+            self.context.setPositions(np.vstack([self.receptor.positions,self.ligand.positions]))
+
         pass
 
     def get_ligand(self,conformation='context'): #'context'
@@ -324,17 +331,61 @@ def predict (receptor_pdb_file=None, ligand_pdb_file=None, forcefield=None, pH=7
     if i_am_logger_out:
         print(np.round(time.time()-time_start,2),'secs')
         print("Evaluation of", tmp_region.num_centers*tmp_region.num_rotations , "different relative orientations started...")
+        time.sleep(0.5)
         time_start = time.time()
     tmp_docker.evaluation(verbose=verbose)
     if i_am_logger_out:
-        print(np.round(time.time()-time_start,2),'secs')
-        time_start = time.time()
-        print("Done")
+        time_finish = time.time()
+        time.sleep(0.5)
+        print("... done in", np.round(time_finish-time_start,2),'secs')
+        print("--- FINISHED ---")
         print("Complex at infinite distance with Potential Energy:",
-              tmp_context.potential_energy_uncoupled)
+              tmp_docker.potential_energy_uncoupled)
         print("Best relative orientation with Potential Energy:",
               tmp_docker.potential_energies.min())
     del(tmp_receptor, tmp_ligand, tmp_region, tmp_context)
     del(_Region, _Docker)
     return tmp_docker
+
+def load(filename=None):
+
+        if filename.endswith('.dpkl'):
+
+            from .docking import Docker as _Docker
+            from .region import Region as _Region
+
+            tmp_docker = _Docker()
+            tmp_docker.mmcontext = MMContext()
+            tmp_docker.region = _Region()
+
+            with open(filename, 'rb') as pickle_file:
+                tmp_docker.mmcontext.receptor = pickle.load(pickle_file)
+                tmp_docker.mmcontext.ligand = pickle.load(pickle_file)
+                tmp_docker.mmcontext.system = pickle.load(pickle_file)
+                tmp_docker.mmcontext._units = pickle.load(pickle_file)
+                tmp_docker.mmcontext._integrator = pickle.load(pickle_file)
+                tmp_docker.region.centers = pickle.load(pickle_file)
+                tmp_docker.region.ijk_centers = pickle.load(pickle_file)
+                tmp_docker.region.nside = pickle.load(pickle_file)
+                tmp_docker.region.rotations = quaternion.as_quat_array(pickle.load(pickle_file))
+                tmp_docker.potential_energies = pickle.load(pickle_file)
+                tmp_docker.potential_energy_uncoupled = pickle.load(pickle_file)
+                tmp_docker._energy_units = pickle.load(pickle_file)
+
+            tmp_docker.mmcontext.molcomplex = MolComplex(tmp_docker.mmcontext.receptor, tmp_docker.mmcontext.ligand)
+            tmp_docker.mmcontext._begins_receptor = 0
+            tmp_docker.mmcontext._begins_ligand   = tmp_docker.mmcontext.receptor.n_atoms
+            tmp_docker.mmcontext.modeller   = tmp_docker.mmcontext.molcomplex.modeller
+            tmp_docker.mmcontext.forcefield = tmp_docker.mmcontext.receptor.forcefield
+            if tmp_docker.mmcontext._integrator == "VerletIntegrator":
+                tmp_docker.mmcontext.context    = openmm.Context(tmp_docker.mmcontext.system, openmm.VerletIntegrator(1.0 * unit.femtoseconds))
+            tmp_docker.mmcontext.context.setPositions(np.vstack([tmp_docker.mmcontext.receptor.positions,
+                                                                 tmp_docker.mmcontext.ligand.positions]))
+
+            tmp_docker.region.num_centers=tmp_docker.region.centers.shape[0]
+            tmp_docker.region.num_rotations=tmp_docker.region.rotations.shape[0]
+
+            del(_Docker,_Region,pickle_file)
+
+            return tmp_docker
 

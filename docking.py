@@ -4,6 +4,8 @@ import kinnetmt as knmt
 from mpi4py import MPI
 from simtk import unit
 from copy import deepcopy
+import quaternion
+import dill as pickle
 import tqdm
 
 class Docker:
@@ -17,8 +19,12 @@ class Docker:
         self.mpi_comm = None
         self.mpi_rank = None
         self.mpi_size = None
-        self.potential_energy_uncoupled = mmcontext.get_potential_energy_uncoupled_complex()
-        self._energy_units = self.potential_energy_uncoupled.unit
+        self.potential_energy_uncoupled = None
+        self._energy_units = None
+
+        if mmcontext is not None:
+            self.potential_energy_uncoupled = mmcontext.get_potential_energy_uncoupled_complex()
+            self._energy_units = self.potential_energy_uncoupled.unit
 
         if mpi_comm is not None:
             self.mpi_comm = mpi_comm
@@ -81,6 +87,26 @@ class Docker:
         else:
             self.potential_energies=np.array(tmp_energies)*self._energy_units
             del(tmp_energies)
+
+    def save(self,filename=None):
+
+        with open(filename, 'wb') as pickle_file:
+            pickle.dump(self.mmcontext.receptor, pickle_file)
+            pickle.dump(self.mmcontext.ligand, pickle_file)
+            pickle.dump(self.mmcontext.system, pickle_file)
+            pickle.dump(self.mmcontext._units, pickle_file)
+            pickle.dump(self.mmcontext._integrator, pickle_file)
+            pickle.dump(self.region.centers, pickle_file)
+            pickle.dump(self.region.ijk_centers, pickle_file)
+            pickle.dump(self.region.nside, pickle_file)
+            pickle.dump(quaternion.as_float_array(self.region.rotations), pickle_file)
+            pickle.dump(self.potential_energies, pickle_file)
+            pickle.dump(self.potential_energy_uncoupled, pickle_file)
+            pickle.dump(self._energy_units, pickle_file)
+
+        pickle_file.close()
+        del(pickle_file)
+        pass
 
     def make_PotentialEnergyNetwork(self):
 
