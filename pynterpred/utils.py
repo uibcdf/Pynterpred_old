@@ -1,6 +1,9 @@
 import numpy as np
 import mdtraj as md
 import nglview
+from os.path import dirname as _dirname, join as _join
+
+test_systems_path=_join(_dirname(__file__),'../examples/testsystems')
 
 def make_view(macromolecule,positions=None):
 
