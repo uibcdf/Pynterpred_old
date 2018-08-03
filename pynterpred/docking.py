@@ -1,6 +1,8 @@
 import time
 import numpy as np
 import kinnetmt as knmt
+from mdtraj import Trajectory as _mdtraj_trajectory, Topology as _mdtraj_topology
+from nglview import show_mdtraj as _nv_show_mdtraj
 from mpi4py import MPI
 from simtk import unit
 from copy import deepcopy
@@ -15,7 +17,6 @@ class Docker:
         self.mmcontext = mmcontext
         self.region    = region
         self.potential_energies = None
-        self.PotentialEnergyNetwork = None
         self.mpi_comm = None
         self.mpi_rank = None
         self.mpi_size = None
@@ -34,6 +35,39 @@ class Docker:
         del(mmcontext,region)
 
         pass
+
+    def get_conformations(self,centers_indices=None, rotations_indices=None, nodes_labels=None):
+
+        if nodes_labels is not None:
+
+            if type(nodes_labels) is str:
+                tmp_center_rotation = node_label[1:-1].split(',')
+                centers_indices = np.array(int(tmp_center_rotation[0]))
+                rotations_indices = np.array(int(tmp_center_rotation[0]))
+
+        tmp_centers = self.region.centers[centers_indices]
+        tmp_rotations = self.region.rotations[rotations_indices]
+
+        tmp_molcomplex = self.mmcontext.get_molcomplex()
+
+        list_positions=[]
+        for center,rotation in zip(tmp_centers,tmp_rotations):
+            self.mmcontext.make_conformation(center*unit.nanometer,rotation)
+            tmp_positions = self.mmcontext.get_positions(molcomplex=True, conformation='context', centered=False)
+            list_positions.append(tmp_positions)
+
+        tmp_molcomplex.set_positions(list_positions)
+
+        return tmp_molcomplex
+
+    def show_conformations(self,centers_indices=None, rotations_indices=None, nodes_labels=None):
+
+        tmp_molcomplex = self.get_conformations(centers_indices, rotations_indices, nodes_labels)
+        tmp_mdtraj_topol = _mdtraj_topology.from_openmm(tmp_molcomples.topology)
+        tmp_mdtraj_traj = _mdtraj_trajectory(tmp_molcomplex,tmp_mdtraj_topol)
+        tmp_view = _nv_show_mdtraj(tmp_mdtraj_traj)
+        del(tmp_molcomplex, tmp_mdtraj_topol, tmp_mdtraj_traj)
+        return tmp_view
 
     def evaluation(self,verbose=False):
 
@@ -108,23 +142,27 @@ class Docker:
         del(pickle_file)
         pass
 
-    def make_PotentialEnergyNetwork(self):
+    def get_PotentialEnergyNetwork(self,form='native.PotentialEnergyNetwork'):
 
-        self.PotentialEnergyNetwork = self.region.make_ConformationalNetwork()
+        tmp_PotentialEnergyNetwork = self.region.make_ConformationalNetwork()
 
-        for ii,jj in zip(list(self.PotentialEnergyNetwork.nodes), self.potential_energies):
-            self.PotentialEnergyNetwork.nodes[ii]['Potential_Energy']=jj
+        for ii,jj in zip(list(tmp_PotentialEnergyNetwork.nodes), self.potential_energies):
+            tmp_PotentialEnergyNetwork.nodes[ii]['Potential_Energy']=jj
 
-    def get_potential_energy_1D_landscape(self):
+        if form=='native.PotentialEnergyNetwork':
+            tmp_net = knmt.load(tmp_PotentialEnergyNetwork,'native.PotentialEnergyNetwork')
+        elif form=='networkx.Graph':
+            tmp_net = tmp_PotentialEnergyNetwork
 
-        if self.PotentialEnergyNetwork is None:
-            self.make_PotentialEnergyNetwork()
+        return tmp_net
 
-        tmp_net = knmt.load(self.PotentialEnergyNetwork,'native.PotentialEnergyNetwork')
-        tmp_xx = tmp_net.get_landscape_bottom_up()
-        tmp_potential_energies = tmp_net.potential_energies * self._energy_units
-        del(tmp_net)
-        return tmp_xx, tmp_potential_energies
+    #def get_potential_energy_1D_landscape(self):
+    #    if self.PotentialEnergyNetwork is None:
+    #        self.make_PotentialEnergyNetwork()
+    #    tmp_xx = self.Native_PotentialEnergyNetwork.get_landscape_bottom_up()
+    #    tmp_potential_energies = self.Native_PotentialEnergyNetwork.potential_energies * self._energy_units
+    #    return tmp_xx, tmp_potential_energies
+
 
 #    def _remove_forbidden_region(self,uncoupled_distance=100000.0*unit.nanometer):
 #

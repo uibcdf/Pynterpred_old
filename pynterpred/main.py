@@ -166,7 +166,7 @@ class MMContext:
 
         return tmp_macromolecule
 
-    def get_positions(self,molcomplex=False,receptor=False,ligand=False,conformation='context',centered=False):
+    def get_positions(self,molcomplex=True,receptor=False,ligand=False,conformation='context',centered=False):
 
         if conformation == 'original':
 
@@ -219,21 +219,23 @@ class MMContext:
         elif len(tmp_out):
             return tmp_out
 
-    def set_positions(self,molcomplex=None,receptor=None,ligand=None,conformation='context'):
-
-        if conformation=='context':
-            if (receptor is not None) or (ligand is not None):
-                tmp_positions=self.get_positions(molcomplex=True,receptor=False,ligand=False)
-                if receptor is not None:
-                    tmp_positions[:self._begins_ligand]=receptor
-                if ligand is not None:
-                    pass
-                    tmp_positions[self._begins_ligand:]=ligand
-                self.context.setPositions(tmp_positions)
-            elif molcomplex is not None:
-                self.context.setPositions(molcomplex)
-        elif conformation=='original':
-            print('Not yet')
+    def set_positions(self,positions=None,molcomplex=None,receptor=None,ligand=None,conformation='context'):
+        if positions is None:
+            if conformation=='context':
+                if (receptor is not None) or (ligand is not None):
+                    tmp_positions=self.get_positions(molcomplex=True,receptor=False,ligand=False)
+                    if receptor is not None:
+                        tmp_positions[:self._begins_ligand]=receptor
+                    if ligand is not None:
+                        pass
+                        tmp_positions[self._begins_ligand:]=ligand
+                    self.context.setPositions(tmp_positions)
+                elif molcomplex is not None:
+                    self.context.setPositions(molcomplex)
+            elif conformation=='original':
+                print('Not yet')
+        else:
+                print('Not yet')
 
 
     def get_potential_energy(self):
