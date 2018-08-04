@@ -41,30 +41,54 @@ class Docker:
         if nodes_labels is not None:
 
             if type(nodes_labels) is str:
-                tmp_center_rotation = node_label[1:-1].split(',')
-                centers_indices = np.array(int(tmp_center_rotation[0]))
-                rotations_indices = np.array(int(tmp_center_rotation[0]))
+                tmp_center_rotation = nodes_labels[1:-1].split(',')
+                centers_indices = np.array([int(tmp_center_rotation[0])])
+                rotations_indices = np.array([int(tmp_center_rotation[1])])
+            elif type(nodes_labels) in [list, tuple]:
+                centers_indices = []
+                rotations_indices = []
+                for ii in nodes_labels:
+                    if type(ii) is str:
+                        tmp_center_rotation = ii[1:-1].split(',')
+                        centers_indices.append(int(tmp_center_rotation[0]))
+                        rotations_indices.append(int(tmp_center_rotation[1]))
+                    else:
+                        centers_indices.append(ii[0])
+                        rotations_indices.append(ii[1])
+                centers_indices = np.array(centers_indices)
+                rotations_indices = np.array(rotations_indices)
+
+        elif ((centers_indices is not None) and (rotations_indices is not None)):
+            if type(centers_indices) == int:
+                centers_indices = [centers_indices]
+            centers_indices = np.array(centers_indices)
+            if type(rotations_indices) == int:
+                rotations_indices = [rotations_indices]
+            rotations_indices = np.array(rotations_indices)
+
 
         tmp_centers = self.region.centers[centers_indices]
         tmp_rotations = self.region.rotations[rotations_indices]
-
         tmp_molcomplex = self.mmcontext.get_molcomplex()
 
         list_positions=[]
         for center,rotation in zip(tmp_centers,tmp_rotations):
             self.mmcontext.make_conformation(center*unit.nanometer,rotation)
             tmp_positions = self.mmcontext.get_positions(molcomplex=True, conformation='context', centered=False)
-            list_positions.append(tmp_positions)
+            list_positions.append(tmp_positions/unit.nanometer)
+
+        list_positions = np.array(list_positions)*unit.nanometer
 
         tmp_molcomplex.set_positions(list_positions)
 
         return tmp_molcomplex
 
-    def show_conformations(self,centers_indices=None, rotations_indices=None, nodes_labels=None):
+    def show_conformations(self,centers_indices=None, rotations_indices=None, nodes_labels=None,
+                          least_rmsd_fit='receptor', center_rmsd_fit='receptor'):
 
         tmp_molcomplex = self.get_conformations(centers_indices, rotations_indices, nodes_labels)
-        tmp_mdtraj_topol = _mdtraj_topology.from_openmm(tmp_molcomples.topology)
-        tmp_mdtraj_traj = _mdtraj_trajectory(tmp_molcomplex,tmp_mdtraj_topol)
+        tmp_mdtraj_topol = _mdtraj_topology.from_openmm(tmp_molcomplex.topology)
+        tmp_mdtraj_traj = _mdtraj_trajectory(tmp_molcomplex.positions/unit.nanometer,tmp_mdtraj_topol)
         tmp_view = _nv_show_mdtraj(tmp_mdtraj_traj)
         del(tmp_molcomplex, tmp_mdtraj_topol, tmp_mdtraj_traj)
         return tmp_view
