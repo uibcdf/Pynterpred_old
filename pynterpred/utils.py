@@ -1,19 +1,24 @@
 import numpy as np
 import mdtraj as md
 import nglview
-from os.path import dirname as _dirname, join as _join
+from os.path import dirname as _dirname, join as _join, abspath as _abspath
+from copy import deepcopy
+from simtk.openmm import app
 
-test_systems_path=_join(_dirname(__file__),'../examples/testsystems')
+test_systems_path=_abspath(_join(_dirname(__file__),'../examples/testsystems'))
 
-def make_view(macromolecule,positions=None):
+def copy_molcomplex(molcomplex):
 
-    topology_mdtraj   = md.Topology.from_openmm(macromolecule.topology)
-    if positions is not None:
-        positions_mdtraj = positions
-        if type(positions_mdtraj) in [list,tuple]:
-            positions_mdtraj=np.array(positions_mdtraj)
-    else:
-        positions_mdtraj  = macromolecule.positions._value
+    tmp_complex = deepcopy(molcomplex)
+    tmp_complex.modeller = app.Modeller(molcomplex.topology, molcomplex.positions)
+    tmp_complex.topology = tmp_complex.modeller.getTopology()
+
+    return tmp_complex
+
+def make_view(topology,positions):
+
+    topology_mdtraj   = md.Topology.from_openmm(topology)
+    positions_mdtraj  = positions._value
     aux_traj=md.Trajectory(positions_mdtraj, topology_mdtraj)
 
     return nglview.show_mdtraj(aux_traj)
@@ -55,24 +60,36 @@ def closest_accessible_atom_to_center(macromolecule,probe_radius=0.227,n_sphere_
 
     return list_atoms_exposed[arg_exposed], dists[arg_exposed]
 
-def geometrical_center_in_origin(Macromolecule):
+def heavy_atoms_indices(topology):
 
-    # with heavy atoms only to avoid lack of reproducilibity when Hs added.
+    tmp_list=[]
+    ii=0
+    for atom in topology.atoms():
+        if atom.element.symbol != 'H':
+            tmp_list.append(ii)
+        ii+=1
 
-    tmp_unit = Macromolecule.positions.unit
+    return np.array(tmp_list)
 
-    atoms_symbols = []
-    for atom in Macromolecule.topology.atoms():
-        atoms_symbols.append(atom.element.symbol)
+def ca_atoms_indices(topology):
 
-    atoms_symbols = np.array(atoms_symbols)
+    tmp_list=[]
+    ii=0
+    for atom in topology.atoms():
+        if atom.name == 'CA':
+            tmp_list.append(ii)
+        ii+=1
 
-    positions_value_heavy_atoms = np.array(Macromolecule.positions._value)[atoms_symbols!='H']
-    geometrical_center=positions_value_heavy_atoms.mean(axis=0)*tmp_unit
+    return np.array(tmp_list)
 
-    del(atoms_symbols,positions_value_heavy_atoms,tmp_unit)
 
-    return (Macromolecule.positions - geometrical_center)
+def geometrical_center(positions,atoms_list):
+
+    tmp_unit = positions.unit
+    tmp_positions = np.array(positions._value)[atoms_list]
+    geometrical_center = tmp_positions.mean(axis=0)*tmp_unit
+    del(tmp_positions,tmp_unit)
+    return geometrical_center
 
 def rgb2hex(rgb):
 

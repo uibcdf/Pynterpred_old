@@ -38,34 +38,7 @@ class Docker:
 
     def get_conformations(self,centers_indices=None, rotations_indices=None, nodes_labels=None):
 
-        if nodes_labels is not None:
-
-            if type(nodes_labels) is str:
-                tmp_center_rotation = nodes_labels[1:-1].split(',')
-                centers_indices = np.array([int(tmp_center_rotation[0])])
-                rotations_indices = np.array([int(tmp_center_rotation[1])])
-            elif type(nodes_labels) in [list, tuple]:
-                centers_indices = []
-                rotations_indices = []
-                for ii in nodes_labels:
-                    if type(ii) is str:
-                        tmp_center_rotation = ii[1:-1].split(',')
-                        centers_indices.append(int(tmp_center_rotation[0]))
-                        rotations_indices.append(int(tmp_center_rotation[1]))
-                    else:
-                        centers_indices.append(ii[0])
-                        rotations_indices.append(ii[1])
-                centers_indices = np.array(centers_indices)
-                rotations_indices = np.array(rotations_indices)
-
-        elif ((centers_indices is not None) and (rotations_indices is not None)):
-            if type(centers_indices) == int:
-                centers_indices = [centers_indices]
-            centers_indices = np.array(centers_indices)
-            if type(rotations_indices) == int:
-                rotations_indices = [rotations_indices]
-            rotations_indices = np.array(rotations_indices)
-
+        centers_indices, rotations_indices = _parse_conformations_selection(centers_indices, rotations_indices, nodes_labels)
 
         tmp_centers = self.region.centers[centers_indices]
         tmp_rotations = self.region.rotations[rotations_indices]
@@ -82,6 +55,16 @@ class Docker:
         tmp_molcomplex.set_positions(list_positions)
 
         return tmp_molcomplex
+
+    def get_min_distance_in_conformations(self, centers_indices=None, rotations_indices=None,
+                                          nodes_labels=None):
+
+        pass
+
+    def get_rmsd_to_target(self, centers_indices=None, rotations_indices=None, nodes_labeles=None,
+                           target_center_index=None, target_rotation_index=None,vtarget_node_label=None,
+                           target_MolComplex=None, fit_receptor = True):
+        pass
 
     def show_conformations(self,centers_indices=None, rotations_indices=None, nodes_labels=None,
                           least_rmsd_fit='receptor', center_rmsd_fit='receptor'):
@@ -195,5 +178,38 @@ class Docker:
 #        nodes_to_remove = [node for node, attributes in self.region.net.nodes(data=True) if attributes['Potential_Energy']>uncoupled_energy]
 #        print(len(nodes_to_remove))
 #        self.region.net.remove_nodes_from(nodes_to_remove)
+
+
+def _parse_conformations_selection(centers_indices=None, rotations_indices=None, nodes_labels=None):
+
+    if nodes_labels is not None:
+
+        if type(nodes_labels) is str:
+            tmp_center_rotation = nodes_labels[1:-1].split(',')
+            centers_indices = np.array([int(tmp_center_rotation[0])])
+            rotations_indices = np.array([int(tmp_center_rotation[1])])
+        elif type(nodes_labels) in [list, tuple]:
+            centers_indices = []
+            rotations_indices = []
+            for ii in nodes_labels:
+                if type(ii) is str:
+                    tmp_center_rotation = ii[1:-1].split(',')
+                    centers_indices.append(int(tmp_center_rotation[0]))
+                    rotations_indices.append(int(tmp_center_rotation[1]))
+                else:
+                    centers_indices.append(ii[0])
+                    rotations_indices.append(ii[1])
+            centers_indices = np.array(centers_indices)
+            rotations_indices = np.array(rotations_indices)
+
+    elif ((centers_indices is not None) and (rotations_indices is not None)):
+        if type(centers_indices) == int:
+            centers_indices = [centers_indices]
+        centers_indices = np.array(centers_indices)
+        if type(rotations_indices) == int:
+            rotations_indices = [rotations_indices]
+        rotations_indices = np.array(rotations_indices)
+
+    return centers_indices, rotations_indices
 
 
