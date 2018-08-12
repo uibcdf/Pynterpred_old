@@ -3,13 +3,18 @@ import networkx as nx
 import kinnetmt as knmt
 import quaternion
 import healpy as hp
+from simtk import unit
 from . import utils
 from sklearn.neighbors import NearestNeighbors
 
 class Region():
 
-    def __init__(self, receptor=None, ligand=None, centers='in_layer', centers_distribution='regular_cartesian',
-                 delta_x=0.25, rotations='All', rotations_distribution='healpix', nside=8):
+    def __init__(self, molcomplex=None, receptor=None, ligand=None, centers='in_layer', centers_distribution='regular_cartesian',
+                 delta_x=0.25*unit.nanometer, rotations='All', rotations_distribution='healpix', nside=8):
+
+        if molcomplex is not None:
+            receptor = molcomplex.receptor
+            ligand   = molcomplex.ligand
 
         self.centers=None
         self.ijk_centers=None
@@ -73,7 +78,7 @@ class Region():
         '''
 
         hbond_dist = 0.25
-        receptor_positions = np.array(receptor.positions._value)
+        receptor_positions = receptor.get_positions()
 
         if centers_distribution=="regular_cartesian":
 

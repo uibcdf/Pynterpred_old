@@ -71,9 +71,14 @@ class Macromolecule():
         tmp_positions = tmp_positions - geometrical_center_positions
         self.set_positions(tmp_positions)
 
-    def get_view(self):
+    def get_view(self, positions=None):
 
-        tmp_view = utils.make_view(self.topology,self.positions)
+        tmp_positions = positions
+        if tmp_positions is None:
+            tmp_positions = self.positions
+
+        tmp_view = utils.make_view(self.topology,tmp_positions)
+
         return tmp_view
 
     def equal_positions_across_MPI_Universe(self,mpi_comm=None):

@@ -17,6 +17,9 @@ def copy_molcomplex(molcomplex):
 
 def make_view(topology,positions):
 
+    if type(positions) == list:
+        positions = np.array([tmp_pos._value for tmp_pos in positions])*positions[0].unit
+
     topology_mdtraj   = md.Topology.from_openmm(topology)
     positions_mdtraj  = positions._value
     aux_traj=md.Trajectory(positions_mdtraj, topology_mdtraj)

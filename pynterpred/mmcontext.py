@@ -157,7 +157,7 @@ class MMContext:
         del(tmp_molcomplex, tmp_system, tmp_context)
         return tmp_pe
 
-    def center_receptor(self,geometrical_center='heavy'):
+    def center_receptor(self, center=None, geometrical_center='heavy', centered=False):
 
         if geometrical_center == 'heavy':
             tmp_list = self.molcomplex.receptor._heavy_atoms_indices
@@ -167,11 +167,14 @@ class MMContext:
             tmp_list = np.arange(self.molcomplex.receptor.n_atoms)
 
         tmp_positions = self.get_receptor_positions()
-        geometrical_center_positions = utils.geometrical_center(tmp_positions,tmp_list)
-        tmp_positions = tmp_positions - geometrical_center_positions
+        if not centered:
+            geometrical_center_positions = utils.geometrical_center(tmp_positions,tmp_list)
+            tmp_positions = tmp_positions - geometrical_center_positions
+        if center is not None:
+            tmp_positions = tmp_positions + center
         self.set_receptor_positions(tmp_positions)
 
-    def center_ligand(self,geometrical_center='heavy'):
+    def center_ligand(self, center=None, geometrical_center='heavy', centered=False):
 
         if geometrical_center == 'heavy':
             tmp_list = self.molcomplex.ligand._heavy_atoms_indices
@@ -181,8 +184,11 @@ class MMContext:
             tmp_list = np.arange(self.molcomplex.ligand.n_atoms)
 
         tmp_positions = self.get_ligand_positions()
-        geometrical_center_positions = utils.geometrical_center(tmp_positions,tmp_list)
-        tmp_positions = tmp_positions - geometrical_center_positions
+        if not centered:
+            geometrical_center_positions = utils.geometrical_center(tmp_positions,tmp_list)
+            tmp_positions = tmp_positions - geometrical_center_positions
+        if center is not None:
+            tmp_positions = tmp_positions + center
         self.set_ligand_positions(tmp_positions)
 
     def rotate_ligand(self,qrotor=None, geometrical_center='heavy', centered=False):
@@ -221,14 +227,11 @@ class MMContext:
         self.set_ligand_positions(tmp_positions)
         del(tmp_positions)
 
-    def make_conformation(self,center=None, qrotor=None, geometrical_center='heavy',centered=False):
-        if centered == False:
-            self.center_ligand(geometrical_center)
-        tmp_positions = self.get_ligand_positions()
-        tmp_unit = tmp_positions.unit
-        tmp_positions=quaternion.rotate_vectors(qrotor,tmp_positions._value)*tmp_unit
-        tmp_positions+=center
-        self.set_ligand_positions(tmp_positions)
+    def make_conformation(self,center=None, rotation=None, geometrical_center='heavy'):
+        self.center_receptor(geometrical_center=geometrical_center)
+        self.center_ligand(geometrical_center=geometrical_center)
+        self.rotate_ligand(qrotor=rotation,geometrical_center=geometrical_center,centered=True)
+        self.center_ligand(center=center,geometrical_center=geometrical_center,centered=True)
 
     def get_min_complex_distance(self):
         pass
